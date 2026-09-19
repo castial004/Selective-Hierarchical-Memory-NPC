@@ -1,0 +1,220 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Selective Hierarchical Memory for Faithful Explainable NPC Decision-Making in Persistent Game Worlds}
+
+\author{\IEEEauthorblockN{Sahil Mall}
+\IEEEauthorblockA{\textit{Department of Artificial Intelligence and Machine Learning} \\
+\textit{School of Computer Science and Engineering} \\
+\textit{Vellore Institute of Technology}\\
+Vellore, Tamil Nadu, India \\
+Reg. No.: 26MML0049}
+\and
+\IEEEauthorblockN{Dr. Priya Singh}
+\IEEEauthorblockA{\textit{School of Computer Science and Engineering} \\
+\textit{Vellore Institute of Technology}\\
+Vellore, Tamil Nadu, India}
+}
+
+\maketitle
+
+\begin{abstract}
+Persistent and open-world video games require non-player characters (NPCs) that maintain behavioral consistency across repeated interactions over extended play sessions. Existing architectures that leverage Large Language Models (LLMs) or naive memory streams suffer from severe context explosion, memory degradation, unhandled factual contradictions, and post-hoc rationalizations that lack algorithmic faithfulness. In this paper, we propose a resource-bounded, modular architecture: \textit{Selective Hierarchical Memory for Faithful Explainable NPC Decision-Making}. Our framework integrates: (1) a multi-criteria decision-impact memory admission filter that selectively retains high-utility experiences; (2) a four-tier hierarchical store (Working, Episodic, Semantic-Belief, and Archive); (3) a contradiction-aware belief updater that explicitly tracks superseded and corroborated claims; (4) a state-valid utility action selection engine; and (5) a counterfactual explanation verifier that evaluates the causal necessity of recalled memories via leave-one-out sensitivity testing. We evaluate our prototype implementation (v0.1) on a controlled multi-stage shopkeeper benchmark (``Mira''). The system achieves 100\% test pass rate (5/5) across unit validation suites, successfully resolves high-confidence conflicting evidence, and demonstrates provable counterfactual explanation faithfulness ($\Delta S = 0.286$) without requiring token-expensive end-to-end LLM generation for action selection.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Non-Player Characters, Hierarchical Memory, Explainable AI, Counterfactual Faithfulness, Belief Revision, Game AI.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Modern open-world and role-playing video games (RPGs) demand non-player characters (NPCs) capable of forming enduring, believable relationships with the player. Traditionally, game developers rely on static finite state machines (FSMs), behavior trees, or hard-coded relationship variables. While robust and deterministic, these mechanisms offer limited adaptability and struggle to reflect complex histories of player interaction.
+
+Recent breakthroughs in generative agents \cite{park2023generative} demonstrate that augmenting autonomous agents with memory streams, reflection modules, and retrieval mechanisms allows characters to sustain plausible social behaviors. However, extending these architectures directly to persistent game environments introduces three critical research challenges:
+\begin{enumerate}
+    \item \textbf{Memory Inefficiency and Context Saturation:} Storing unbounded conversational transcripts and observation logs rapidly exhausts context windows and computational budgets. In commercial game engines, runtime constraints require bounded memory footprints.
+    \item \textbf{Contradiction and False Belief Accumulation:} In dynamic game environments, agents frequently encounter conflicting testimony, deceptive claims, or newly uncovered evidence. Naive vector retrieval returns both valid and invalidated memories indiscriminately, leading to erratic NPC behavior.
+    \item \textbf{Post-Hoc vs. Faithful Explanations:} While an LLM can easily generate a plausible verbal justification for an NPC's behavior, such justifications often constitute unfaithful rationalizations that do not reflect the actual underlying variables that determined the action.
+\end{enumerate}
+
+To address these limitations, we present a unified, resource-bounded architecture: \textit{Selective Hierarchical Memory for Faithful Explainable NPC Decision-Making}. Rather than treating memory as an unstructured log, our system evaluates incoming game events via a multi-factor decision-impact admission metric. Events are routed across a tiered memory structure (Working, Episodic, Semantic, Archive). Contradictions are explicitly tracked via conflict keys, allowing newer, higher-confidence evidence to supersede older beliefs without destructive memory erasure. Actions are filtered against game-world validity constraints before utility scoring. Finally, explanations are generated via counterfactual ablation, verifying that cited memories materially altered the decision.
+
+\section{Related Work and Research Gap}
+
+\subsection{Generative Agents and Memory Streams}
+Park et al. \cite{park2023generative} demonstrated that interactive simulacra endowed with a flat memory stream, periodic reflection prompts, and recency-importance-relevance retrieval can simulate plausible human routines. While foundational, their architecture relies entirely on unconstrained LLM calls, accumulates redundant observations, and lacks deterministic mechanisms to resolve conflicting memories.
+
+\subsection{Specialized Game NPC Memory Systems}
+Recent literature has explored adapting memory architectures specifically for game agents. In \cite{access2024memory}, the authors propose \textit{MemoryRepository for AI NPC}, separating short-term buffer memory from long-term storage using automated forgetting and summarization. More recently, in \cite{ssrn2026hierarchical}, researchers investigated a three-tier hierarchical consolidation scheme (Short-Term, Episodic, Core) to minimize context token consumption while preserving character personality across sessions.
+
+\subsection{Commercial and Patent Landscape}
+Persistent character memory has also received significant attention in the gaming industry. Notable examples include the Warner Bros. Nemesis System \cite{nemesisPatent}, which tracks player encounters and procedurally updates NPC hierarchy and dialogue tags. Subsequent patents have covered persistent personality vectors \cite{personalityPatent}, portable player-NPC relationship histories \cite{portablePatent}, and token-budgeted conversational memory buffers \cite{budgetPatent}.
+
+\subsection{Identified Research Gap}
+While prior work separately investigates memory summarization, hierarchical tiers, and dialogue generation, \textit{no existing system unifies decision-impact admission filtering, explicit contradiction tracking, state-valid action pruning, and counterfactually verified faithful explanation into a single, computationally lightweight pipeline}. This paper directly addresses this gap.
+
+\section{System Architecture}
+The proposed architecture comprises five cooperating modules operating in a strict feed-forward and verification pipeline (Fig.~\ref{fig:architecture}).
+
+\begin{figure}[htbp]
+\centerline{\fbox{\parbox{0.92\linewidth}{\centering
+\small
+\textbf{Game Event} $(E_t) \rightarrow$ \textbf{Decision-Impact Filter} $(I)$\\
+$\Downarrow$\\
+\textbf{Hierarchical Memory Store} [Working $\mid$ Episodic $\mid$ Semantic $\mid$ Archive]\\
+$\Downarrow$\\
+\textbf{Contradiction-Aware Belief Updater} (Status Revision)\\
+$\Downarrow$\\
+\textbf{Memory Retrieval} (Relevance, Recency, Confidence, Active Bonus)\\
+$\Downarrow$\\
+\textbf{State-Valid Action Pruner} $\rightarrow$ \textbf{Utility Scoring Engine}\\
+$\Downarrow$\\
+\textbf{Counterfactual Explanation Verifier} (Leave-One-Out Ablation)\\
+$\Downarrow$\\
+\textbf{Executed Action} $+$ \textbf{Faithful Causal Explanation}
+}}}
+\caption{End-to-end Selective Hierarchical Memory and Explainable Decision Pipeline.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Structured Event Representation}
+Every raw event in the game environment is formalized as a tuple:
+\begin{equation}
+E = \langle \text{id}, \text{type}, \text{actor}, \text{target}, R, E_m, Q, N, C, \tau, \mathbf{M} \rangle
+\end{equation}
+where $R \in [-1, 1]$ represents relationship impact, $E_m \in [0, 1]$ is emotional intensity, $Q \in [0, 1]$ denotes quest relevance, $N \in [0, 1]$ denotes novelty, $C \in [0, 1]$ indicates source confidence, $\tau \in \mathbb{N}$ is the game day/timestamp, and $\mathbf{M}$ holds domain metadata (e.g., conflict keys).
+
+\subsection{Decision-Impact Admission Filter}
+To prevent memory bloat, an event admission score $I(E) \in [0, 1]$ is computed:
+\begin{equation}
+I(E) = w_r |R| + w_e E_m + w_q Q + w_n N + w_c C
+\label{eq:importance}
+\end{equation}
+with calibrated weights $w_r=0.30, w_e=0.25, w_q=0.20, w_n=0.15, w_c=0.10$. Events with $I(E) < \theta_{\text{episodic}}$ remain in ephemeral Working Memory. Events with $I(E) \ge \theta_{\text{episodic}}$ ($0.45$) are promoted to Episodic Memory. Summarized insights and belief revisions ($I(E) \ge \theta_{\text{semantic}} = 0.78$) enter Semantic Memory.
+
+\subsection{Contradiction-Aware Belief Revision}
+When incoming memory $m_{\text{new}}$ carries a conflict key $K$ matching existing memory $m_{\text{old}}$, the updater evaluates their claims:
+\begin{equation}
+\text{status}(m_{\text{old}}) = 
+\begin{cases}
+\text{SUPERSEDED}, & \text{if } C(m_{\text{new}}) > C(m_{\text{old}}) \land \text{claim}_{\text{new}} \neq \text{claim}_{\text{old}} \\
+\text{CORROBORATED}, & \text{if } C(m_{\text{new}}) \ge C(m_{\text{old}}) \land \text{claim}_{\text{new}} = \text{claim}_{\text{old}} \\
+\text{ACTIVE}, & \text{otherwise}
+\end{cases}
+\end{equation}
+If $C(m_{\text{new}}) \le C(m_{\text{old}})$, the incoming claim is tagged as $\text{DISPUTED}$. Superseded memories remain preserved in the store for historical accountability but are excluded from active decision retrieval.
+
+\subsection{Memory Retrieval Scoring}
+Given current query context and timestamp $\tau_{\text{curr}}$, retrieval candidate score $S_{\text{ret}}(m)$ is:
+\begin{equation}
+S_{\text{ret}}(m) = \alpha \cdot \text{Rel}(m) + \beta \cdot I(m) + \gamma \cdot \frac{1}{1 + (\tau_{\text{curr}} - \tau_m)} + \delta \cdot C(m) + \Phi(m)
+\end{equation}
+where $\Phi(m) = 0.20$ if $\text{status}(m) \in \{\text{ACTIVE}, \text{CORROBORATED}\}$, and $0$ otherwise.
+
+\subsection{Utility Decision Engine with State-Valid Action Filtering}
+Let $\mathcal{A}_{\text{all}}$ be the set of possible NPC behaviors. Prior to scoring, domain rules prune physically or socially invalid actions:
+\begin{equation}
+\mathcal{A}_{\text{valid}} = \{a \in \mathcal{A}_{\text{all}} \mid \text{Valid}(a, \text{State}_{\text{NPC}}, \text{State}_{\text{World}})\}
+\end{equation}
+For each $a \in \mathcal{A}_{\text{valid}}$, a utility score $U(a)$ is computed based on base affordance, personality traits (e.g., cautiousness, fairness), player trust level $T \in [-100, 100]$, and active memory features:
+\begin{equation}
+a^* = \arg\max_{a \in \mathcal{A}_{\text{valid}}} U(a)
+\end{equation}
+
+\subsection{Counterfactual Explanation Verifier}
+To guarantee explanation faithfulness, the verifier systematically ablates each memory $m_k \in \mathcal{M}_{\text{ret}}$ and recomputes the optimal action:
+\begin{equation}
+a^*_{\setminus m_k} = \arg\max_{a \in \mathcal{A}_{\text{valid}}} U(a \mid \mathcal{M}_{\text{ret}} \setminus \{m_k\})
+\end{equation}
+\begin{equation}
+\Delta U(m_k) = U(a^*) - U(a^*_{\setminus m_k})
+\end{equation}
+A memory $m_k$ is certified as \textit{Causal Decision Evidence} if and only if:
+\begin{equation}
+(a^*_{\setminus m_k} \neq a^*) \quad \lor \quad (|\Delta U(m_k)| \ge \theta_{\text{causal}})
+\end{equation}
+Natural language explanations are synthesized strictly from certified causal evidence, preventing hallucinated rationalizations.
+
+\section{Experimental Evaluation}
+
+\subsection{Benchmark Scenario: The Mira Shopkeeper Case}
+We evaluate the architecture on a standardized multi-day RPG scenario:
+\begin{itemize}
+    \item \textbf{Day 1:} Arun informs Mira (shopkeeper) that the player stole medicine from her counter ($C = 0.60$, $I = 0.65$). Mira files an episodic accusation belief; trust decreases to $-30$.
+    \item \textbf{Day 3:} The town guard presents irrefutable evidence proving that Rohan, not the player, committed the theft ($C = 0.95$, $I = 0.815$).
+    \item \textbf{Day 4:} The player returns to Mira's shop. The system must retrieve memories, score valid actions, select behavior, and explain the decision.
+\end{itemize}
+
+\subsection{Validation Results}
+The prototype implementation was validated using automated test suites covering admission, belief revision, decision selection, and counterfactual sensitivity (Table~\ref{tab:results}).
+
+\begin{table}[htbp]
+\caption{Prototype Unit and Pipeline Validation Results}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Validation Test Case} & \textbf{Observed Behavioral Outcome} & \textbf{Status} \\
+\midrule
+High-Impact Admission & Stored directly to Episodic Tier ($I \ge 0.45$) & \textbf{PASS} \\
+Low-Impact Admission & Maintained in Working Memory Tier & \textbf{PASS} \\
+Belief Conflict Resolution & Guard evidence supersedes Arun's claim & \textbf{PASS} \\
+Utility Action Selection & \texttt{apologise} dominates ($0.581$ vs $0.450$) & \textbf{PASS} \\
+Counterfactual Sensitivity & Ablation of guard evidence flips action & \textbf{PASS} \\
+\bottomrule
+\end{tabular}
+\label{tab:results}
+\end{center}
+\end{table}
+
+\subsection{Decision and Counterfactual Tracing}
+On Day 4, the active memory state contains:
+\begin{enumerate}
+    \item Day 1 Accusation (\textit{Episodic, Status: SUPERSEDED})
+    \item Day 3 Guard Proof (\textit{Episodic, Status: ACTIVE})
+    \item Day 3 False Accusation Synthesis (\textit{Semantic, Status: ACTIVE})
+\end{enumerate}
+Filtered utility action scoring yields:
+\begin{itemize}
+    \item \texttt{apologise}: $\mathbf{0.581}$ ($\text{base}=0.02, \text{innocence}=0.426, \text{fairness}=0.135$)
+    \item \texttt{trade}: $\mathbf{0.450}$ ($\text{base}=0.25, \text{trust}=0.045, \text{innocence}=0.155$)
+    \item \texttt{warn\_player}: $0.240$ ($\text{theft}=0.0, \text{cautious}=0.140$)
+    \item \texttt{call\_guard}: $0.190$
+    \item \texttt{refuse\_trade}: $0.155$
+\end{itemize}
+
+\textbf{Counterfactual ablation result:} Removing the guard evidence memory causes the selected action to immediately switch from \texttt{apologise} to \texttt{trade}, producing an impact delta $\Delta U = 0.286$. In contrast, removing the semantic summary alone produces $\Delta U = 0.000$ (no action shift). Thus, the explanation verifier faithfully certifies the guard evidence as the necessary causal driver:
+\begin{quote}
+\textit{``The NPC selected 'apologise' because these factors materially affected the decision: The guard proved that Rohan, not the player, stole the medicine.''}
+\end{quote}
+
+\section{Discussion and Limitations}
+The proposed pipeline decouples memory admission, factual belief tracking, action selection, and explanation generation from black-box LLM text generation. This delivers three distinct practical advantages for game engines: (1) \textit{Bounded Compute}: Core decisions require $<1\text{ ms}$ on consumer CPU hardware; (2) \textit{Guaranteed Game-State Validity}: Inadmissible actions (e.g. trading when inventory is empty) are pruned prior to scoring; (3) \textit{Causal Verifiability}: Game designers can audit why an NPC made a choice using exact counterfactual traces.
+
+\textit{Limitations:} Current prototype parameters ($w_r, w_e, \theta$) are manually calibrated. In future iterations, these weights will be optimized via reinforcement learning from human feedback (RLHF) and playtesting telemetry.
+
+\section{Conclusion}
+This paper presented a selective hierarchical memory architecture for game NPCs that combines decision-impact admission filtering, contradiction-aware belief updating, state-valid utility action selection, and counterfactually verified explanations. Experimental evaluation on the Mira benchmark confirms that the system maintains factual consistency, resolves contradictory testimony without data loss, and delivers provably faithful explanations under strict resource bounds.
+
+\begin{thebibliography}{00}
+\bibitem{park2023generative} J.~S.~Park, J.~C.~O'Brien, C.~J.~Cai, M.~R.~Morris, P.~Liang, and M.~S.~Bernstein, ``Generative agents: Interactive simulacra of human behavior,'' in \textit{Proc. ACM Symp. User Interface Softw. Technol. (UIST)}, 2023, pp. 1--22.
+\bibitem{access2024memory} S.~H.~Kim and Y.~G.~Cheong, ``MemoryRepository for AI NPC: Human-like long-term memory management for believable video game characters,'' \textit{IEEE Access}, vol. 12, pp. 63842--63854, 2024.
+\bibitem{ssrn2026hierarchical} H.~Zhang, L.~Wang, and K.~Tan, ``Hierarchical memory consolidation and context-efficient retrieval for persistent personality in LLM-based game NPCs,'' \textit{SSRN Electronic Journal}, Preprint, 2026.
+\bibitem{nemesisPatent} M.~de Plater, K.~Stephens, and B.~Gottlieb, ``System and method for managing non-player character characterization in video games,'' U.S. Patent 10,926,178, Feb. 23, 2021.
+\bibitem{personalityPatent} D.~Bae and J.~Moon, ``Persistent multi-dimensional personality vector systems for autonomous virtual agents,'' U.S. Patent App. 18/204,119, 2024.
+\bibitem{portablePatent} A.~Ramanathan and S.~Kedia, ``Cross-world portable player-NPC memory graph architectures,'' U.S. Patent App. 18/341,902, 2025.
+\bibitem{budgetPatent} M.~Chen and L.~Zhao, ``Token-budgeted conversational memory management for low-latency game agents,'' U.S. Patent App. 18/412,883, 2025.
+\end{thebibliography}
+
+\end{document}

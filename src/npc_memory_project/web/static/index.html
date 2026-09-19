@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Selective Hierarchical Memory NPC System — Interactive RPG & Explainable AI Inspector</title>
+  <meta name="description" content="A research-grade 2D visual RPG simulation demonstrating selective hierarchical memory, contradiction-aware belief revision, utility decision-making, and faithful counterfactual explanations for game NPCs.">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-badge" id="appLogoBadge">SHM-XAI v1.0</div>
+      <h1 class="logo-title" id="appTitle">Selective Hierarchical Memory NPC Simulator</h1>
+    </div>
+
+    <div class="header-controls">
+      <div class="day-badge" id="currentDayDisplay">Day 1</div>
+      <div class="dialogue-mode-pill" id="dialogueModePill" title="Current dialogue generation mode">⚙ Offline Persona</div>
+      <button class="btn btn-primary" id="advanceDayBtn" onclick="advanceGameDay()">
+        <span>⏩ Advance Day</span>
+      </button>
+      <button class="btn btn-danger" id="resetSimBtn" onclick="resetSimulation()">
+        <span>🔄 Reset Baseline</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Split Layout -->
+  <main class="app-container">
+
+    <!-- Left Column: 2D Interactive RPG Viewport & Controls -->
+    <section class="game-viewport-panel" aria-label="Game World Viewport">
+      
+      <!-- 2D Canvas Container -->
+      <div class="canvas-container" id="canvasWrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div class="canvas-hud-overlay" id="locationHud">📍 Town Square — Persistent Game World</div>
+        <div class="canvas-controls-hint" id="controlsHint">Use WASD / Arrow Keys / Click to Move • Approach NPCs to Interact</div>
+      </div>
+
+      <!-- Quick Action Hotbar -->
+      <nav class="action-hotbar" aria-label="Player Actions">
+        <span class="hotbar-label">Actions:</span>
+        <button class="btn" id="actionTalkMiraBtn" onclick="selectNPCTab('mira'); interactWithNPC('mira');">
+          <span>💬 Talk to Mira</span>
+        </button>
+        <button class="btn" id="actionTalkKaelBtn" onclick="selectNPCTab('kael'); interactWithNPC('kael');">
+          <span>🛡️ Talk to Guard</span>
+        </button>
+        <button class="btn" id="actionEvidenceBtn" onclick="presentEvidence('kael')">
+          <span>📜 Present Evidence</span>
+        </button>
+        <button class="btn" id="actionPersuadeBtn" onclick="persuadeRohan()">
+          <span>⚖️ Confront Rohan</span>
+        </button>
+        <button class="btn" id="actionRumourBtn" onclick="shareRumour()">
+          <span>👂 Arun Spreads Rumour</span>
+        </button>
+      </nav>
+
+      <!-- In-Game Spoken Dialogue Box -->
+      <article class="dialogue-box" id="dialogueContainer">
+        <div class="dialogue-speaker">
+          <div class="speaker-name" id="dialogueSpeakerName">Mira</div>
+          <span class="speaker-role" id="dialogueSpeakerRole">SHOPKEEPER</span>
+        </div>
+        <p class="dialogue-text" id="dialogueText">
+          "I'm watching you closely... Arun told me what you did with the medicine."
+        </p>
+        <div class="dialogue-faithfulness-badge" id="dialogueBadge">
+          <span>✓ Certified Faithfully Explainable (Zero LLM Hallucination)</span>
+        </div>
+      </article>
+
+      <!-- Live Event Stream Log -->
+      <div class="event-log-container" id="eventLogContainer">
+        <div class="log-title">Town Event Stream & Lifecycle Log</div>
+        <div id="eventLogStream">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Live Neuro-Symbolic XAI Brain Inspector -->
+    <aside class="xai-inspector-panel" aria-label="Explainable AI Brain Inspector">
+      
+      <div class="inspector-header">
+        <h2 class="inspector-title">
+          <span>🧠 NPC Neuro-Symbolic Brain</span>
+        </h2>
+        <span style="font-size: 0.75rem; color: var(--accent-cyan);">Live Explainability Suite</span>
+      </div>
+
+      <!-- Character Selector Tabs -->
+      <div class="npc-tabs" role="tablist">
+        <button class="npc-tab active" data-npc="mira" id="tabMira" onclick="selectNPCTab('mira')">🌿 Mira</button>
+        <button class="npc-tab" data-npc="kael" id="tabKael" onclick="selectNPCTab('kael')">🛡️ Kael</button>
+        <button class="npc-tab" data-npc="arun" id="tabArun" onclick="selectNPCTab('arun')">🍎 Arun</button>
+        <button class="npc-tab" data-npc="rohan" id="tabRohan" onclick="selectNPCTab('rohan')">🗡️ Rohan</button>
+      </div>
+
+      <!-- Trust Meter & Personality -->
+      <div class="status-grid">
+        <div class="meter-card" id="trustMeterCard">
+          <div class="meter-title">
+            <span>Player Trust</span>
+            <span id="trustScoreValue">-30.0</span>
+          </div>
+          <div class="trust-gauge">
+            <div class="trust-fill" id="trustFillBar" style="width: 35%; background: #ef4444;"></div>
+          </div>
+        </div>
+
+        <div class="meter-card" id="personalityCard">
+          <div class="meter-title">
+            <span>Personality Profile</span>
+          </div>
+          <div id="personalityBadges" style="display: flex; flex-wrap: wrap; gap: 4px;">
+            <!-- Badges -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Utility Decision Scoring Engine Visualizer -->
+      <div class="section-card" id="utilityScoringCard">
+        <div class="section-title">
+          <span>Candidate Action Utility Scores</span>
+          <span style="font-size: 0.7rem; color: var(--text-muted);">Eq. 131–134 (State-Valid)</span>
+        </div>
+        <div id="actionScoreBars">
+          <!-- Dynamically populated with horizontal utility bars -->
+        </div>
+      </div>
+
+      <!-- Counterfactual Explanation Studio (Ablation Testing) -->
+      <div class="section-card" id="counterfactualCard">
+        <div class="section-title">
+          <span>Counterfactual Explanation Studio</span>
+          <span style="font-size: 0.7rem; color: var(--accent-emerald);">Leave-One-Out Ablation</span>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.3;">
+          Toggle off recalled memories below to see if the NPC's chosen action flips in real time (causal verification):
+        </p>
+        <div id="cfEvidenceList" style="display: flex; flex-direction: column; gap: 6px;">
+          <!-- Dynamically populated evidence checkboxes -->
+        </div>
+        <!-- Live What-If Result Panel -->
+        <div id="cfResultPanel" style="display:none; margin-top:10px; padding:10px; border-radius:8px; background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.2);">
+          <div style="font-size:0.7rem; color: var(--accent-emerald); font-weight:700; margin-bottom:4px;">⚡ WHAT-IF RESULT</div>
+          <div style="font-size:0.8rem; color:#f1f5f9;">
+            Action flips to: <strong id="cfResultAction" style="color:var(--accent-amber);">—</strong>
+          </div>
+          <div style="font-size:0.75rem; color: var(--text-secondary); margin-top:4px;" id="cfResultNote"></div>
+        </div>
+      </div>
+
+      <!-- Memory Tier Heatmap -->
+      <div class="section-card" id="memoryHeatmapCard" style="margin-bottom: 4px;">
+        <div class="section-title">
+          <span>Memory Tier Distribution</span>
+          <span style="font-size: 0.7rem; color: var(--text-muted);" id="heatmapTotalLabel">0 memories</span>
+        </div>
+        <div id="memoryHeatmapBar" style="display:flex; height:18px; border-radius:6px; overflow:hidden; gap:2px; margin-bottom:6px;"></div>
+        <div id="memoryHeatmapLegend" style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.68rem; color:var(--text-secondary);"></div>
+      </div>
+
+      <!-- Hierarchical Memory Matrix (4 Tiers) -->
+      <div class="section-card" id="memoryMatrixCard">
+        <div class="section-title">
+          <span>Hierarchical Memory Store</span>
+          <span style="font-size: 0.7rem; color: var(--accent-indigo);">Selective Admission</span>
+        </div>
+
+        <!-- Tier Tabs -->
+        <div class="tier-tabs">
+          <button class="tier-tab active" data-tier="all" onclick="selectTierTab('all')">All</button>
+          <button class="tier-tab" data-tier="working" onclick="selectTierTab('working')">⚡ Working</button>
+          <button class="tier-tab" data-tier="episodic" onclick="selectTierTab('episodic')">📖 Episodic</button>
+          <button class="tier-tab" data-tier="semantic" onclick="selectTierTab('semantic')">🧠 Semantic</button>
+          <button class="tier-tab" data-tier="archive" onclick="selectTierTab('archive')">🗄️ Archive</button>
+        </div>
+
+        <div class="memory-cards-container" id="memoryCardsList">
+          <!-- Memory cards -->
+        </div>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <script src="/static/game.js"></script>
+  <script src="/static/inspector.js"></script>
+</body>
+</html>
