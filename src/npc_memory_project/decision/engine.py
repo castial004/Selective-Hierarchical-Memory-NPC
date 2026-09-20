@@ -61,12 +61,26 @@ class UtilityDecisionEngine:
                 total = sum(factors.values())
                 scores[action] = ActionScore(action, round(total, 4), factors)
 
-        # Shopkeeper actions (strictly matches IEEE paper calibrated weights)
+        # Shopkeeper actions (IEEE paper calibrated weights; cautiousness gated, see below)
         add("trade", {"base": 0.25, "high_trust": 0.45 * high, "innocence_memory": 0.20 * innocence})
         add("offer_discount", {"base": 0.10, "high_trust": 0.40 * high, "help_memory": 0.30 * helpv})
-        add("refuse_trade", {"base": 0.05, "theft_memory": 0.45 * theft, "low_trust": 0.35 * low, "cautious": 0.15 * cautious})
-        add("warn_player", {"base": 0.10, "theft_memory": 0.25 * theft, "low_trust": 0.20 * low, "cautious": 0.20 * cautious})
-        add("call_guard", {"base": 0.05, "theft_memory": 0.35 * theft, "low_trust": 0.20 * low, "cautious": 0.20 * cautious})
+        threat = 1.0 if (theft > 0.0 or rumour > 0.0) else 0.0
+        add("refuse_trade", {"base": 0.05, "theft_memory": 0.45 * theft, "low_trust": 0.35 * low, "cautious": 0.15 * cautious * threat})
+        # v0.3.0 fix: cautiousness is an impulse *towards a perceived threat*, so
+        # it is gated on one being present. Ungated it added a flat +0.14 to the
+        # punitive actions of any cautious NPC, so `warn_player`/`refuse_trade`
+        # outranked `talk` even with nothing on file -- an empty shop and an
+        # unblemished customer still produced a warning (caught by the
+        # author-labelled cases no-stock-removes-trade / no-money-removes-trade).
+        #
+        # The gate is on *presence*, not magnitude: any retrievable accusation or
+        # rumour (theft/rumour > 0) restores the original paper weights exactly,
+        # so scenarios that were already correct are bit-for-bit unchanged.
+        # A graded gate was tried first and was too weak -- it halved the push in
+        # the accusation+noise scenario and dropped invariant I2 from 63/63 to
+        # 62/63, which is why presence is the right variable.
+        add("warn_player", {"base": 0.10, "theft_memory": 0.25 * theft, "low_trust": 0.20 * low, "cautious": 0.20 * cautious * threat})
+        add("call_guard", {"base": 0.05, "theft_memory": 0.35 * theft, "low_trust": 0.20 * low, "cautious": 0.20 * cautious * threat})
         add("apologise", {"base": 0.02, "innocence_memory": 0.55 * innocence, "fairness": 0.15 * fair})
 
         # Guard & General actions

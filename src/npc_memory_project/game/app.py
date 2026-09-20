@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import pygame
 
 from npc_memory_project.game.assets import CHAR_H, CHAR_W, SCALE, TILE_PX, SpriteFactory
+from npc_memory_project.game.display import Display
 from npc_memory_project.game.conversation import (
     Choice, GameContext, apply_effect, available_choices, entry_node, get_node,
     memory_rows, quest_hint,
@@ -69,13 +70,16 @@ class Entity:
 class Game:
     """Scene manager and main loop."""
 
-    def __init__(self, headless: bool = False) -> None:
+    def __init__(self, headless: bool = False, *, scale: float = 1.0,
+                 fullscreen: bool = False,
+                 window_size: Optional[Tuple[int, int]] = None) -> None:
         if headless:
             os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
             os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
         pygame.init()
-        pygame.display.set_caption("Selective Hierarchical Memory — the town of Ashfen")
-        self.screen = pygame.display.set_mode(WINDOW)
+        self.display = Display(logical_size=WINDOW, scale=scale, fullscreen=fullscreen,
+                               window_size=window_size)
+        self.screen = self.display.logical        # everything is drawn here
         self.clock = pygame.time.Clock()
 
         self.sim = TownSimulation()
@@ -469,11 +473,27 @@ class Game:
         if event.type == pygame.QUIT:
             self.running = False
             return
+
+        if event.type == pygame.VIDEORESIZE:
+            self.display.resize((event.w, event.h))
+            return
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+            self.display.toggle_fullscreen()
+            if not self.display.fullscreen_supported:
+                self.notify("Fullscreen is unavailable in this environment.")
+            return
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_F10:
+            factor = self.display.cycle_window_scale()
+            self.notify(f"Window scale {factor:g}x")
+            return
+
         if event.type != pygame.KEYDOWN and event.type != pygame.MOUSEBUTTONDOWN:
             return
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            mouse = pygame.mouse.get_pos()
+            mouse = self.display.to_logical(event.pos)
             if self.scene == "dialogue":
                 if self.page_done() and self.last_page():
                     for index, rect in enumerate(self.renderer.choice_rects):
@@ -515,7 +535,7 @@ class Game:
                 self.handle_event(event)
             self.update(dt)
             self.draw()
-            pygame.display.flip()
+            self.display.present()
             frames += 1
             if max_frames is not None and frames >= max_frames:
                 break
@@ -556,21 +576,49 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--scene", default="world",
                         choices=["world", "dialogue", "shop", "memory", "help", "day3"])
     parser.add_argument("--fps", type=int, default=FPS)
+    parser.add_argument("--scale", type=float, default=1.0,
+                        help="initial window scale (1.0 = 960x640; 2.0 = 1920x1280)")
+    parser.add_argument("--window", metavar="WxH", default=None,
+                        help="explicit initial window size, e.g. 1600x900")
+    parser.add_argument("--fullscreen", action="store_true",
+                        help="start fullscreen (F11 toggles at runtime)")
+    parser.add_argument("--capture-window", action="store_true",
+                        help="with --screenshot, save the scaled window instead of "
+                             "the logical frame")
     args = parser.parse_args(argv)
 
+    scale = args.scale
+    window_size = None
+    if args.window:
+        try:
+            width, height = (int(part) for part in args.window.lower().split("x"))
+        except ValueError:
+            parser.error("--window must look like 1600x900")
+        window_size = (width, height)
+
     if args.screenshot:
-        game = Game(headless=True)
+        game = Game(headless=True, scale=scale, fullscreen=args.fullscreen,
+                    window_size=window_size)
         _prepare_scene(game, args.scene)
         game.draw()
-        pygame.image.save(game.screen, args.screenshot)
-        print(f"screenshot written to {args.screenshot} (scene={args.scene}, "
+        if args.capture_window:
+            game.display.present()          # scale the logical frame into the window
+            target = game.display.window
+        else:
+            target = game.screen
+        pygame.image.save(target, args.screenshot)
+        print(f"screenshot written to {args.screenshot} "
+              f"({target.get_width()}x{target.get_height()}, scene={args.scene}, "
               f"day={game.sim.world.game_day})")
         pygame.quit()
         return 0
 
-    game = Game()
-    print("Ashfen is open. WASD to walk, E to talk, N to sleep, J for the memory "
-          "inspector, F1 for help.")
+    game = Game(scale=scale, fullscreen=args.fullscreen, window_size=window_size)
+    print(
+        "Ashfen is open.\n"
+        "  WASD/arrows walk   E talk   N next day   J memory   F1 help\n"
+        "  F11 fullscreen     F10 cycle window size   ESC quit"
+    )
     game.run()
     return 0
 

@@ -59,7 +59,27 @@ Resolve the case and the same conversation changes:
 | mouse | hover and click replies |
 | N | sleep and advance a day |
 | J / TAB | memory inspector |
+| **F11** | **fullscreen** |
+| **F10** | **cycle window size (1x → 2x)** |
+| drag window edge | the view scales to fit and letterboxes |
 | F1 | help · ESC close |
+
+### Window size and fullscreen
+
+The game always draws to a fixed logical frame (960x640) and scales that frame
+into whatever window you have, so nothing re-flows and the pixel art stays
+crisp at whole-number multiples.
+
+```bash
+npc-memory-game                          # 960x640 window
+npc-memory-game --scale 2                # 1920x1280
+npc-memory-game --window 1600x900        # exact size, letterboxed to fit
+npc-memory-game --fullscreen             # start fullscreen
+npc-memory-game --screenshot big.png --scene dialogue --scale 2 --capture-window
+```
+
+In-game: **F11** toggles fullscreen, **F10** cycles 1x / 1.25x / 1.5x / 2x, and
+dragging the window edge resizes live.
 
 ### Quests and shops
 
@@ -173,7 +193,32 @@ trace, and explanations are built only from factors that survived ablation.
 
 ## Evaluation
 
-`python -m npc_memory_project.evaluation.benchmark` reports four things:
+Two entry points. `python -m npc_memory_project.evaluation.report --all` prints the
+retrieval comparison, the ablation table and the scaling table in about three
+seconds; `docs/EVALUATION.md` holds the current numbers with their limitations.
+`python -m npc_memory_project.evaluation.benchmark` reports the four measurements
+below.
+
+Headline comparison against five retrieval baselines, on a 21-case author-labelled
+set and the 63-check invariant suite:
+
+| method | labelled | invariants |
+|---|---|---|
+| SHM (this architecture) | 21/21 | 63/63 |
+| status-aware, no tiers | 21/21 | 63/63 |
+| importance-only | 20/21 | 62/63 |
+| recency+importance (status-blind) | 20/21 | 62/63 |
+| tiers, status-blind | 20/21 | 62/63 |
+| recency-only | 19/21 | 48/63 |
+
+**Read this honestly.** The cases are labelled by the system author, not by human
+raters, and every confidence interval except recency-only's touches zero: at this
+sample size the architecture is *not* statistically distinguishable from an
+importance-ranked baseline. The one component that survives ablation is belief
+**status** filtering; removing the tier hierarchy or the semantic tier costs
+nothing measurable on either instrument, and `help`/`rumour`/`confession` are
+unexercised feature channels. `docs/EVALUATION.md` section 2 has the full ablation
+and section 4 the decision-engine defect this instrument caught.
 
 **1. Pipeline contract checks** — assert *properties* (the certified cause, when
 ablated, must change the action) rather than magic constants.
@@ -208,8 +253,10 @@ token count. (v0.2 reported a 64.0% reduction derived from a hardcoded
 "45 tokens per event" assumption.)
 
 **What the suite does not establish:** one NPC role, one scenario family,
-hand-authored invariants, no human playtest ground truth, no comparison to an LLM
-memory baseline, and text size rather than context-window cost.
+hand-authored invariants and author-written case labels, no human playtest ground
+truth (the protocol to obtain it is written but has not been run -- see
+`docs/HUMAN_EVAL_PROTOCOL.md`), no comparison to an LLM memory baseline, and text
+size rather than context-window cost.
 
 ## Layout
 
@@ -223,11 +270,11 @@ src/npc_memory_project/
   social/          rumour diffusion with provenance chains
   persistence/     SQLite store (thread-safe)
   simulation/      multi-NPC town orchestration
-  evaluation/      seeded scenario harness + benchmark
+  evaluation/      scenario harness, baselines, ablation, scaling, stats, report CLI
   web/             HTTP server + canvas simulator and XAI inspector
   game/            playable pygame town (pixel-art, dialogue, shops)
-tests/             73 tests
-docs/              architecture notes + IEEE paper draft
+tests/             106 tests
+docs/              architecture notes, evaluation results, human-eval protocol, IEEE paper draft
 ```
 
 ## Status and honesty notes
@@ -239,6 +286,13 @@ docs/              architecture notes + IEEE paper draft
   influence decisions; the legacy `event_type` keyword scan is retained as a
   fallback. `CLAIM_FEATURES` in `core/features.py` is scenario vocabulary and
   belongs in scenario data, not library code.
+* Negative results are reported as found: the tier hierarchy and the semantic tier
+  contribute nothing measurable to any decision in the current suite, while the
+  `theft` channel carries almost all of the signal (`docs/EVALUATION.md` section 2).
+* v0.4.0 fixed a decision-engine defect the evaluation found: the `cautious`
+  personality trait was an ungated bonus on the punitive actions, so a cautious
+  shopkeeper warned the player with no accusation on file. It is now gated on the
+  presence of a threat, which leaves every previously correct scenario unchanged.
 * Ablation is a *deletion* counterfactual ("the NPC had forgotten this") over
   retrieved memories only — trust, personality and world flags are never
   ablated. Explanations cover the memory contribution to a decision, not the

@@ -1,5 +1,67 @@
 # Changelog
 
+## v0.4.0 -- window scaling and research validation
+
+Two unrelated pieces of work, both from the same audit pass: the game now fills any
+window, and the project can finally measure itself against something.
+
+### Game: bigger UI, real fullscreen
+
+The window was fixed at 960x640 with no way to enlarge it. The fix keeps a fixed
+**logical** frame and scales it into whatever window exists, so no UI element is
+repositioned and the pixel art stays crisp at integer scales.
+
+| Control | Effect |
+|---|---|
+| `F11` | toggle fullscreen |
+| `F10` | cycle window size 1x / 1.25x / 1.5x / 2x |
+| drag the window edge | live resize, letterboxed |
+
+New flags: `--scale 2`, `--window 1600x900`, `--fullscreen`, `--capture-window`.
+New module `game/display.py` (`Display`, `LOGICAL_SIZE`, `WINDOW_STEPS`), 9 tests in
+`tests/test_display.py`. Mouse clicks are mapped through `to_logical`, so hit-testing
+is unaffected by scaling or letterbox bars.
+
+### Evaluation: baselines, ablation, scaling, statistics
+
+The v0.2 numbers were stale and there was nothing to compare against.
+
+| Module | Role |
+|---|---|
+| `evaluation/baselines.py` | five retrieval policies behind the manager's own signature: recency-only, importance-only, recency+importance, status-aware-no-tiers, tiers-status-blind |
+| `evaluation/labelled.py` | 21 author-labelled decision cases, each isolating one mechanism (`label_source="author"`) |
+| `evaluation/ablation.py` | component and per-feature-channel ablation |
+| `evaluation/scaling.py` | decision latency vs NPC count and per-NPC history |
+| `evaluation/stats.py` | Wilson interval, paired bootstrap, Cohen's kappa, summaries |
+| `evaluation/report.py` | one CLI producing every reported number; `--export-labels`, `--labels`, `--preference`, `--invariants N` |
+| `docs/EVALUATION.md` | the results, with limitations, including the negative ones |
+| `docs/HUMAN_EVAL_PROTOCOL.md` | the protocol for real human labels -- **written, not executed** |
+
+Main result: 21/21 labelled and 63/63 invariants for the full architecture, against
+19/21 and 48/63 for recency-only. Honest caveats, all in `docs/EVALUATION.md`:
+labels are the author's, no interval except recency-only's excludes zero, and the
+tier hierarchy plus the semantic tier cost nothing measurable when removed.
+
+### Fixed
+
+* **Cautious NPCs punished innocent players.** `cautious` was added to
+  `refuse_trade` / `warn_player` / `call_guard` as an ungated flat bonus, so a
+  cautious shopkeeper warned a customer with nothing on file. It is now gated on the
+  presence of a threat (`theft > 0 or rumour > 0`), which restores the paper's
+  original weights in every scenario that has an accusation and leaves 63/63
+  intact. Found by the labelled suite on its first run.
+* `Display.window_size` overrides `scale` -- `--window 1600x900` produced 1600x1066
+  by deriving the scale from width alone.
+* Window capture saved a black frame unless `display.present()` had run.
+* `to_logical`/`to_window` now `round` instead of truncating, which was dropping the
+  last logical pixel and breaking click round-trips.
+
+### Tests
+
+73 -> **106** (`tests/test_evaluation.py` adds 24, `tests/test_display.py` adds 9).
+`test_baselines_actually_discriminate` exists because the first version of the
+labelled set scored every method identically -- a comparison that does not compare.
+
 ## v0.3.0 — the playable town
 
 A pixel-art pygame front end over the research core, plus the fixes the game
