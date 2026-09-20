@@ -1,4 +1,4 @@
-# Evaluation Results — v0.4.0
+# Evaluation Results — v0.5.0
 
 Every number in this file is produced by one command and can be regenerated in
 about three seconds:
@@ -81,18 +81,24 @@ how an unevaluated system looks.
 
 | NPCs | memories/NPC | store records | retrieved | median | p95 | invariants |
 |---|---|---|---|---|---|---|
-| 5 | 10 | 60 | 5 | 0.036 ms | 0.061 ms | 100% |
-| 20 | 50 | 1,200 | 5 | 0.062 ms | 0.091 ms | 100% |
-| 20 | 200 | 4,800 | 5 | 0.365 ms | 0.428 ms | 100% |
-| 60 | 50 | 3,600 | 5 | 0.114 ms | 0.173 ms | 100% |
+| 5 | 10 | 50 | 5 | 0.035 ms | 0.065 ms | 100% |
+| 20 | 50 | 1,000 | 5 | 0.060 ms | 0.088 ms | 100% |
+| 20 | 200 | 4,000 | 5 | 0.167 ms | 0.339 ms | 100% |
+| 60 | 50 | 3,000 | 5 | 0.098 ms | 0.179 ms | 100% |
+
+(The store sizes dropped from v0.4.0's because the synthetic fixture was appending
+a second record under an existing ``event_id``; see section 6.3. A real store keys on
+that id, so the fixture now does too.)
 
 * Latency is bounded by **store size, not world size**: retrieval scans every
   record that belongs to the NPC and then keeps five. At 4,800 records a decision
   costs 0.365 ms median / 0.428 ms p95, so a 60 fps frame (16.7 ms) has three
   orders of magnitude of headroom for a handful of NPCs per frame.
-* It is **not** sublinear, and nothing here should be described as O(1) or
-  "constant-time". An index over `(npc_id, tier, status, game_day)` is the obvious
-  next optimisation and is not implemented.
+* The scan was linear in the *whole* NPC history in v0.4.0, including records no
+  decision could ever use. That is fixed in v0.5.0 -- see section 6.4, which measures
+  a 4.0x / 9.1x / 1.8x reduction in per-decision retrieval cost on the same stores.
+  Retrieval is still linear in the *retrievable* set, so nothing here should be
+  described as O(1).
 * Cross-NPC stores were generated synthetically (`evaluation/scaling.py`) and do
   not exercise the persistence layer, whose own benchmark is in
   `docs/architecture.md`. Treat the shape of the curve — linear in NPC history,
@@ -138,16 +144,105 @@ covered by tests in `tests/test_evaluation.py`.
    are hand-calibrated).
 6. **No LLM baseline.** Every policy here is deterministic and local, so the
    comparison says nothing about an LLM-driven NPC.
+7. **The long-horizon results are two timelines** (section 6): one NPC, one scenario
+   vocabulary, 2 chatter events per day. Retention is demonstrated; *robustness* of
+   retention is not.
+8. **Tiers remain decision-redundant** even after section 6.3. They now have a
+   measurable *cost* role via the index, which is not the same as being necessary.
 
-## 6. Reproducing
+## 6. Long-horizon retention, and what the tier hierarchy is actually for
+
+Every instrument above freezes time: a handful of records, one day, one decision.
+Tiers and semantic beliefs exist to work *over* time, so testing them on frozen state
+tests them where they cannot matter. This section runs the clock -- 120 simulated
+days through the real pipeline (`event_to_memory` -> `revise` -> `manage_lifecycle` ->
+`consolidate`), with warnings probed at days 5/10/20/40/80/120.
+
+Two timelines. **A (exonerated):** day 1 accusation, day 3 verified exoneration --
+probes expect warmth. **B (accused):** the accusation is never retracted -- probes
+expect the shop to stay shut. "dec" is the share of probes where the decisive record
+(the exoneration, or the accusation) was actually in the retrieved top-5.
+
+| policy | A acc | A dec | B acc | B dec |
+|---|---|---|---|---|
+| **SHM (this architecture)** | **100%** | **100%** | **100%** | **100%** |
+| no semantic tier | 100% | 100% | 100% | 100% |
+| status-aware, no tiers | 100% | 100% | 100% | 100% |
+| tiers, status-blind | 100% | 100% | 100% | 100% |
+| recency only | 100% | **0%** | **0%** | **0%** |
+
+### 6.1 Retention holds -- the first real evidence for the architecture's claim
+
+An exoneration verified on day 3 still governs the decision on day 120, and an
+accusation never retracted still closes the counter on day 120. Knowledge survives
+120 days and ~240 competing records. This is the claim the project has been making
+since v0.1 and had never tested.
+
+### 6.2 Accuracy alone would have flattered a system with total amnesia
+
+recency-only scores **100% on timeline A while retrieving the decisive record 0% of
+the time**. By day 5 its top-5 is pure chatter, so it answers "warm" because it has
+*no signal at all* -- and on timeline A, warm happens to be right. Only the
+decisive-in-top-5 column exposes that. Any retention result reported without it
+should be distrusted, this one included.
+
+### 6.3 The tier hierarchy is redundant with belief status, and here is the proof
+
+At day 120 the store holds 243 records: 5 working, 1 episodic, 1 semantic, and **236
+archived**. Of those 236 archived records, **236 are also `SUPERSEDED` or `EXPIRED`
+-- 100%**. The lifecycle only ever archives a record it has already excluded by
+status, so `tier != ARCHIVE` excludes a strict subset of what
+`status not in (SUPERSEDED, EXPIRED, DISPUTED)` excludes.
+
+That is why removing tiers costs nothing (section 2), and it is worse than that: the
+two mechanisms are *mutually* redundant. `tiers, status-blind` also scores 100% on
+both timelines, because the archived copy of a superseded record is already out of
+reach. Either filter alone reproduces every result this repository can produce.
+
+**What to do about it, honestly:** the tier structure is not earning its keep as a
+decider. What it does do is bound cost, which section 6.4 turns into a measurement.
+A future version should either give the tiers a decision-level job (the natural
+candidate: consolidate a resolved conflict into a semantic belief and *archive its
+source episodes*, so knowledge survives compression) or drop them from the claim.
+Neither is done here.
+
+### 6.4 The cost side: a retrieval index
+
+If archival never changes a decision but always shrinks the reachable set, then the
+exclusion machinery is a *cost* mechanism, and the manager was paying that cost on
+every call -- scoring 243 records to keep 7. `memory/index.py` keeps the retrievable
+subset per NPC up to date instead, and `TownSimulation` now drives it from its write
+hooks.
+
+| store | records | reachable | skipped | median | indexed | speedup | same answer? |
+|---|---|---|---|---|---|---|---|
+| archived-heavy (day 120) | 243 | 7 | 236 | 0.025 ms | 0.006 ms | **4.0x** | yes |
+| multi-NPC (60 x 50) | 3,000 | 8 | 2,992 | 0.067 ms | 0.007 ms | **9.1x** | yes |
+| deep history (1 x 4,800) | 4,800 | 896 | 3,904 | 1.249 ms | 0.700 ms | 1.8x | yes |
+
+The equivalence check is not decoration. The first implementation keyed records by
+`event_id` in a plain dict, which *silently dropped duplicates*; the indexed path
+returned a different top-5 than the brute-force scan on a store that happened to hold
+two records under one id, and the check failed the row rather than reporting a 7.2x
+speedup that was really an answer-changing bug. The index now uses the SQLite store's
+own keying (upsert by `event_id`) and *counts* collisions so a corrupt store shows up
+instead of being quietly deduplicated.
+
+Read the table honestly: the win scales with how much of the store is dead weight.
+Where almost everything is reachable (deep history, 896 of 4,800) it is 1.8x, and if
+the hot set were the whole store there would be no win at all.
+
+## 7. Reproducing
 
 ```bash
 pip install -e ".[dev]"
 python -m npc_memory_project.evaluation.report            # table in section 1
 python -m npc_memory_project.evaluation.report --ablation # section 2
 python -m npc_memory_project.evaluation.report --scaling  # section 3
+python -m npc_memory_project.evaluation.report --longitudinal  # section 6.1-6.3
+python -m npc_memory_project.evaluation.report --indexing      # section 6.4
 python -m npc_memory_project.evaluation.report --invariants 200
-pytest tests/test_evaluation.py -q
+pytest tests/test_evaluation.py tests/test_memory_index.py -q
 ```
 
 Numbers above were produced on the development machine on 2026-09-20; latencies

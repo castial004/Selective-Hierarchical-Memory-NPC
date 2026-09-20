@@ -1,5 +1,76 @@
 # Changelog
 
+## v0.5.0 -- does it remember, months later?
+
+Every instrument up to v0.4.1 froze time: a handful of records, one day, one decision.
+Tiers and semantic beliefs are supposed to do their work *over time*, so testing them
+on frozen state tested them where they could not matter. This release runs the clock.
+
+### The retention experiment
+
+120 simulated days through the real pipeline (`event_to_memory` -> `revise` ->
+`manage_lifecycle` -> `consolidate`), probed at days 5/10/20/40/80/120 on two
+timelines: **A** accuses on day 1 and exonerates on day 3, **B** never retracts the
+accusation.
+
+| policy | A accuracy | A decisive retrieved | B accuracy | B decisive retrieved |
+|---|---|---|---|---|
+| SHM (this architecture) | 100% | 100% | 100% | 100% |
+| no semantic tier | 100% | 100% | 100% | 100% |
+| status-aware, no tiers | 100% | 100% | 100% | 100% |
+| tiers, status-blind | 100% | 100% | 100% | 100% |
+| recency only | 100% | **0%** | **0%** | **0%** |
+
+* **Retention holds for 120 days** -- the claim the project has made since v0.1 and
+  never tested.
+* **Accuracy alone would have flattered total amnesia.** recency-only scores 100% on
+  timeline A while never retrieving anything relevant: by day 5 its top-5 is pure
+  chatter, so it answers "warm" because it has no signal at all. The
+  decisive-retrieval column exists to catch exactly that.
+* **The tier hierarchy is provably redundant with belief status.** At day 120, 236 of
+  243 records are archived and **236 of 236 archived records are also superseded or
+  expired** -- the archive filter excludes a strict subset of the status filter. The
+  two mechanisms are mutually redundant: either one alone reproduces every result.
+  Reported as a negative result rather than tuned away; see below for what the
+  structure *is* good for.
+
+### The retrieval index (`memory/index.py`)
+
+Archival changes no decision but always shrinks the reachable set, so the exclusion
+machinery is a cost mechanism -- and the manager paid that cost on every call,
+scoring 243 records to keep 7. The index keeps the retrievable subset per NPC up to
+date and `TownSimulation` drives it from its write hooks.
+
+| store | records | reachable | per-decision retrieval |
+|---|---|---|---|
+| day-120 retention store | 243 | 7 | 0.025 ms -> 0.006 ms (**4.0x**) |
+| 60 NPCs x 50 records | 3,000 | 8 | 0.067 ms -> 0.007 ms (**9.1x**) |
+| one NPC, 4,800 records | 4,800 | 896 | 1.249 ms -> 0.700 ms (1.8x) |
+
+Rigour note: the first implementation keyed records by `event_id` in a plain dict and
+silently dropped duplicates. The benchmark's equivalence check caught it -- the
+indexed path returned a different top-5 than a brute-force scan -- and the row was
+failed instead of reported. The index now upserts like the SQLite store and *counts*
+collisions so a corrupt store is visible.
+
+### Fixed
+
+* `evaluation/scaling.py` was appending a second record under an existing `event_id`
+  (a `revise()` return value was compared against a replaced copy), so the synthetic
+  stores held duplicate primary keys and their record counts were inflated: 60x50 went
+  from 3,600 to 3,000 records, 1x4800 from 5,760 to 4,800.
+* `retrieve` and the index now share one predicate
+  (`memory.manager.is_retrievable`), so an index lookup and a full scan cannot
+  disagree about what a decision may see.
+
+### Documentation
+
+`docs/EVALUATION.md` gains section 6 (retention, the redundancy proof, the index with
+its equivalence caveat) and an updated limitations list. New report commands:
+`--longitudinal`, `--indexing`.
+
+Tests 120 -> **134** (`tests/test_memory_index.py`).
+
 ## v0.4.1 -- the UI is drawn at window resolution
 
 v0.4.0 made the window scalable but scaled *everything* in it, text included. On a

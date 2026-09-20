@@ -250,6 +250,49 @@ nothing measurable on either instrument, and `help`/`rumour`/`confession` are
 unexercised feature channels. `docs/EVALUATION.md` section 2 has the full ablation
 and section 4 the decision-engine defect this instrument caught.
 
+### Does it remember, months later?
+
+The instruments above freeze time, so v0.5.0 runs the clock: 120 simulated days
+through the real pipeline (`admit -> revise -> lifecycle -> consolidate`), probed at
+days 5/10/20/40/80/120.
+
+| policy | exoneration timeline | accused timeline |
+|---|---|---|
+| **SHM (this architecture)** | **100%** (decisive memory retrieved: 100%) | **100%** (100%) |
+| no semantic tier / no tiers / status-blind | 100% | 100% |
+| recency only | 100% -- **but its decisive memory was retrieved 0% of the time** | **0%** |
+
+Three things fall out of that table, all in `docs/EVALUATION.md` section 6:
+
+* **Retention holds.** An exoneration verified on day 3 still governs the decision on
+  day 120, and an accusation never retracted still closes the counter on day 120.
+* **Accuracy alone would have flattered total amnesia.** recency-only scores 100% on
+  the exoneration timeline while retrieving nothing relevant at all -- it answers
+  "warm" because it has no signal. Only the decisive-retrieval column exposes it.
+* **The tier hierarchy is provably redundant with belief status.** At day 120 the
+  store holds 243 records; 236 are archived, and **236 of those 236 are also
+  superseded or expired**, so the archive filter excludes a strict subset of what the
+  status filter excludes. Either filter alone reproduces every result in this
+  repository.
+
+### What the exclusions are actually for
+
+If archival never changes a decision but always shrinks the reachable set, then it is
+a *cost* mechanism -- and v0.5.0 cashes that in. `memory/index.py` keeps the
+retrievable subset of each NPC's store up to date, and the simulation drives it from
+its write hooks:
+
+| store | records | reachable | per-decision retrieval |
+|---|---|---|---|
+| day-120 retention store | 243 | 7 | 0.025 ms -> **0.006 ms (4.0x)** |
+| 60 NPCs x 50 records | 3,000 | 8 | 0.067 ms -> **0.007 ms (9.1x)** |
+| one NPC, 4,800 records | 4,800 | 896 | 1.249 ms -> 0.700 ms (1.8x) |
+
+Every row is checked for *identical results* against a brute-force scan before its
+speedup is reported. That check is not decoration: the first implementation silently
+dropped duplicate `event_id`s and returned a different top-5, and the check failed the
+row instead of publishing a 7.2x "speedup" that was really a correctness bug.
+
 **1. Pipeline contract checks** — assert *properties* (the certified cause, when
 ablated, must change the action) rather than magic constants.
 
@@ -293,17 +336,18 @@ size rather than context-window cost.
 ```
 src/npc_memory_project/
   core/            models + explicit causal feature channel
-  memory/          admission filter, tier manager, semantic consolidation
+  memory/          admission filter, tier manager, consolidation, retrieval index
   beliefs/         contradiction-aware belief revision
   decision/        valid-action filtering + utility engine
   explainability/  counterfactual verifier, explanation generator, dialogue
   social/          rumour diffusion with provenance chains
   persistence/     SQLite store (thread-safe)
   simulation/      multi-NPC town orchestration
-  evaluation/      scenario harness, baselines, ablation, scaling, stats, report CLI
+  evaluation/      harness, baselines, ablation, scaling, retention,
+                   indexing, stats, report CLI
   web/             HTTP server + canvas simulator and XAI inspector
   game/            playable pygame town (pixel-art, dialogue, shops)
-tests/             106 tests
+tests/             134 tests
 docs/              architecture notes, evaluation results, human-eval protocol, IEEE paper draft
 ```
 
@@ -319,6 +363,10 @@ docs/              architecture notes, evaluation results, human-eval protocol, 
 * Negative results are reported as found: the tier hierarchy and the semantic tier
   contribute nothing measurable to any decision in the current suite, while the
   `theft` channel carries almost all of the signal (`docs/EVALUATION.md` section 2).
+  Section 6.3 goes further and proves the tier filter is redundant with belief status:
+  every archived record is also superseded or expired.
+* The retrieval index is the one place tiers and status *do* pay off -- as a bound on
+  how much of the store a decision has to scan, not as a change to any decision.
 * v0.4.0 fixed a decision-engine defect the evaluation found: the `cautious`
   personality trait was an ungated bonus on the punitive actions, so a cautious
   shopkeeper warned the player with no accusation on file. It is now gated on the

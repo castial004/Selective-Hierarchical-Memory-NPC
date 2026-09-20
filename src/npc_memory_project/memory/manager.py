@@ -3,6 +3,34 @@ from typing import List, Tuple
 from npc_memory_project.core.models import GameEvent, MemoryRecord, MemoryTier, BeliefStatus
 from npc_memory_project.memory.importance import decision_impact_score
 
+#: Statuses a decision may never use: SUPERSEDED and EXPIRED are history, and
+#: DISPUTED is a claim the updater explicitly declined to accept as knowledge.
+EXCLUDED_STATUSES = frozenset(
+    {BeliefStatus.SUPERSEDED, BeliefStatus.EXPIRED, BeliefStatus.DISPUTED}
+)
+
+#: Tiers a decision may never use. Note this is a *subset* of EXCLUDED_STATUSES in
+#: practice -- the lifecycle only ever archives records it has already superseded
+#: or expired -- which is the redundancy reported in docs/EVALUATION.md. It is kept
+#: as a separate filter because the index and the manager must agree exactly, not
+#: approximately.
+EXCLUDED_TIERS = frozenset({MemoryTier.ARCHIVE})
+
+
+def is_retrievable(record: MemoryRecord, include_disputed: bool = False) -> bool:
+    """The single definition of "a decision may see this record".
+
+    Used by both :meth:`HierarchicalMemoryManager.retrieve` and
+    :class:`npc_memory_project.memory.index.RetrievalIndex`, so an index lookup and
+    a brute-force scan cannot disagree.
+    """
+    if record.tier in EXCLUDED_TIERS:
+        return False
+    if record.status in EXCLUDED_STATUSES:
+        return include_disputed and record.status == BeliefStatus.DISPUTED
+    return True
+
+
 class HierarchicalMemoryManager:
     def __init__(
         self,
@@ -71,16 +99,11 @@ class HierarchicalMemoryManager:
         make a guard choose ``arrest_player``. DISPUTED records are now excluded
         by default; pass ``include_disputed=True`` to inspect them.
         """
-        excluded = {BeliefStatus.SUPERSEDED, BeliefStatus.EXPIRED}
-        if not include_disputed:
-            excluded.add(BeliefStatus.DISPUTED)
-
+        # One shared predicate with memory/index.py -- see is_retrievable().
         cand = [
             m
             for m in memories
-            if m.npc_id == npc_id
-            and m.status not in excluded
-            and m.tier != MemoryTier.ARCHIVE
+            if m.npc_id == npc_id and is_retrievable(m, include_disputed=include_disputed)
         ]
         scored = []
         for m in cand:

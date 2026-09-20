@@ -426,6 +426,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     parser.add_argument("--ablation", action="store_true", help="component/feature ablation")
     parser.add_argument("--scaling", action="store_true", help="latency vs world size")
+    parser.add_argument("--longitudinal", action="store_true",
+                        help="knowledge retention over 120 simulated days")
+    parser.add_argument("--indexing", action="store_true",
+                        help="retrieval index: latency, skipped records, equivalence")
     parser.add_argument("--all", action="store_true", help="main + ablation + scaling")
     parser.add_argument("--json", type=Path, help="write machine-readable results here")
     parser.add_argument("--top-k", type=int, default=5)
@@ -504,6 +508,49 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         rows = scaling_table(iterations=args.scaling_iterations)
         print_scaling_table(rows)
         payload["scaling"] = rows
+
+    if args.longitudinal or args.all:
+        from npc_memory_project.evaluation.longitudinal import (
+            print_longitudinal_report, run_longitudinal_experiment,
+        )
+
+        result = run_longitudinal_experiment()
+        print_longitudinal_report(result)
+        payload["longitudinal"] = {
+            "probe_days": result["probe_days"],
+            "retention": result["retention"],
+            "store_at_end": {
+                name: {
+                    "day": snaps[-1].day,
+                    "records": snaps[-1].records,
+                    "by_tier": snaps[-1].by_tier,
+                    "by_status": snaps[-1].by_status,
+                    "archived_total": snaps[-1].archived_total,
+                    "archived_also_status_excluded":
+                        snaps[-1].archived_also_status_excluded,
+                }
+                for name, snaps in result["snapshots"].items()
+            },
+        }
+
+    if args.indexing or args.all:
+        from npc_memory_project.evaluation.indexing import (
+            print_indexing_report, run_indexing_experiment,
+        )
+
+        rows = run_indexing_experiment(iterations=args.scaling_iterations)
+        print_indexing_report(rows)
+        payload["indexing"] = [
+            {
+                "store": r.store, "records": r.records,
+                "retrievable_for_npc": r.retrievable_for_npc,
+                "median_ms": r.median_ms, "p95_ms": r.p95_ms,
+                "indexed_median_ms": r.indexed_median_ms,
+                "indexed_p95_ms": r.indexed_p95_ms,
+                "speedup": r.speedup, "identical": r.identical,
+            }
+            for r in rows
+        ]
 
     if args.json:
         args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
