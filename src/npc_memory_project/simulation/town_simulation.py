@@ -85,7 +85,7 @@ class TownSimulation:
                 role="shopkeeper",
                 trust=-30.0,
                 personality={"fairness": 0.90, "cautious": 0.70},
-                inventory={"medicine": 5, "bandage": 10},
+                inventory={"medicine": 5, "bandage": 10, "herbs": 8},
                 goals=["protect_inventory", "run_apothecary"],
             ),
             "arun": NPCState(
@@ -93,7 +93,7 @@ class TownSimulation:
                 role="vendor",
                 trust=0.0,
                 personality={"fairness": 0.40, "cautious": 0.40, "aggressive": 0.60},
-                inventory={"apples": 20, "bread": 15},
+                inventory={"apple": 20, "bread": 15, "rumour": 99},
                 goals=["sell_goods", "gossip"],
             ),
             "kael": NPCState(

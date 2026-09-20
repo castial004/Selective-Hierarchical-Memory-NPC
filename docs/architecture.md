@@ -48,6 +48,26 @@ GameEvent
 11. **Rumour diffusion** — confidence attenuation with provenance chains
     (`source_chain`, `origin_event_id`), which also feed lineage-aware ablation.
 
+## Playable front end (v0.3.0)
+
+`game/` is a pygame layer over the same core — no research logic lives there:
+
+```
+world_map.py    tiles, BLOCKING set, collision, Camera
+      │
+pixel_art.py ─► assets.py ─► renderer.py ─► app.py  (Game loop, scenes)
+                                   ▲
+shop.py ──────► conversation.py ───┘   GameContext reads the live store
+                 (dialogue graph)      and the utility engine's choice
+```
+
+`conversation.GameContext` is the only bridge: it calls
+`HierarchicalMemoryManager.retrieve()`, `UtilityDecisionEngine.decide()` and
+`CounterfactualExplanationVerifier.verify_memories()` to build each line and each
+availability gate. A reply is never scripted speech about memory — it *is* the
+memory. Dialogue and shop layers import no pygame, so the whole game graph is
+unit-testable headlessly.
+
 ## Faithfulness test
 
 The system recomputes the NPC decision after removing each retrieved memory *and

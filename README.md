@@ -4,8 +4,9 @@ A runnable research prototype for NPCs that remember selectively, revise beliefs
 when testimony contradicts itself, choose actions under game-state validity
 constraints, and *prove* which memories caused the choice.
 
-Version **0.2.1** — the audit-fix release. See [CHANGELOG-AUDIT.md](CHANGELOG-AUDIT.md)
-for what changed since v0.2 and why.
+Version **0.3.0** — adds the playable pygame town on top of the audited core.
+See [CHANGELOG-AUDIT.md](CHANGELOG-AUDIT.md) for the v0.2.1 audit fixes and
+[CHANGELOG.md](CHANGELOG.md) for the game release.
 
 The decision core is **dependency-free** (Python standard library only) and runs
 **without an LLM**. An LLM can be attached, optionally, for dialogue polish only —
@@ -21,17 +22,89 @@ pip install -e ".[dev]"
 
 python -m npc_memory_project.demo.shopkeeper_demo        # narrative walkthrough
 python -m npc_memory_project.evaluation.benchmark        # evaluation suite
-pytest                                                    # 53 tests
+pytest                                                    # 73 tests
 ```
 
-## Interactive simulator
+## Playable pixel-art town (pygame)
+
+```bash
+pip install -e ".[game]"
+npc-memory-game                 # or: python -m npc_memory_project.game.app
+```
+
+![The town of Ashfen](docs/screenshots/01-town.png)
+
+A 2D pixel-art town — Ashfen — where you walk up to townsfolk and hold
+conversations, Genshin-style: a portrait, a name plate, typewritten speech, and
+a numbered list of replies. **The replies are not scripted flavour text.** Each
+one is generated from that NPC's live memory store, and the orange tag above the
+speech names the memory the counterfactual verifier certified as the cause of
+their decision.
+
+Day 1, she will not sell to you — and the reply is greyed out for a reason you
+can read:
+
+![Mira refuses](docs/screenshots/02a-refused.png)
+
+Resolve the case and the same conversation changes:
+
+![Dialogue with Mira](docs/screenshots/02-dialogue.png)
+
+| Control | Action |
+|---|---|
+| WASD / arrows | walk |
+| E / SPACE / ENTER | talk to the nearby townsfolk |
+| UP / DOWN | pick a reply |
+| 1 – 9 | jump straight to a reply |
+| mouse | hover and click replies |
+| N | sleep and advance a day |
+| J / TAB | memory inspector |
+| F1 | help · ESC close |
+
+### Quests and shops
+
+![Arun's stall](docs/screenshots/03-shop.png)
+
+Townsfolk gate what they offer on what they believe and what you carry:
+
+* **Mira the apothecary** will not open her counter while she believes the theft
+  accusation. Ask her *why* and she cites the exact memory behind it.
+* **Kael the guard** explains how a traveller proves innocence: the market keeps
+  copies of every apothecary sale. He does not arrest you — the arrest rule
+  needs a warrant, a wanted flag or a permit.
+* **Arun the vendor** sells apples, bread, and *rumours*. Buying a rumour hands
+  you his top memory as hedged speech, e.g. *"I believe — Arun told the market
+  stalls that the player stole Mira's medicine. (day 1, 60 % sure)"*. He also
+  sells the **market ledgers** — that purchase is what gives you the receipts.
+* **Rohan the suspect** is cornered in the alley. Push him and he confesses;
+  Kael records it and Mira's belief revises through the normal updater.
+
+Then Mira apologises, trades, and the cause tag still reads *the guard proved
+Rohan was the thief* — which is the research claim, playable.
+
+### Memory inspector
+
+![Memory inspector](docs/screenshots/04-inspector.png)
+
+`J` shows every NPC's actual store: tier dots (working / episodic / semantic /
+archive), status dots (active / corroborated / disputed / superseded / expired),
+importance and confidence. Mira keeps the **superseded** accusation alongside the
+guard's proof — history is preserved, not overwritten.
+
+Headless for CI or screenshotting:
+
+```bash
+npc-memory-game --screenshot out.png --scene dialogue
+```
+
+## Interactive web simulator
 
 ```bash
 python -m npc_memory_project.web.server --port 8080
 # then open http://127.0.0.1:8080
 ```
 
-A 2D canvas town with four NPCs (Mira the apothecary, Kael the guard, Arun the
+A browser canvas town with four NPCs (Mira the apothecary, Kael the guard, Arun the
 vendor, Rohan the suspect) and a live *Explainable AI inspector*:
 
 | Panel | What it shows |
@@ -152,7 +225,8 @@ src/npc_memory_project/
   simulation/      multi-NPC town orchestration
   evaluation/      seeded scenario harness + benchmark
   web/             HTTP server + canvas simulator and XAI inspector
-tests/             53 tests
+  game/            playable pygame town (pixel-art, dialogue, shops)
+tests/             73 tests
 docs/              architecture notes + IEEE paper draft
 ```
 
