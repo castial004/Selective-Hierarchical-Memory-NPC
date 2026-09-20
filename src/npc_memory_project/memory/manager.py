@@ -18,9 +18,19 @@ class HierarchicalMemoryManager:
         self.archive_horizon = archive_horizon
         self.decay_lambda = decay_lambda
 
+    #: Event sources whose output is by definition a derived belief, not raw
+    #: experience. v0.2 gated SEMANTIC admission on metadata["is_summary"] only,
+    #: and nothing in the repository ever set that key -- so choose_tier could
+    #: never return SEMANTIC for a real event.
+    SEMANTIC_SOURCES = frozenset({"consolidation", "belief_revision"})
+
     def choose_tier(self, event: GameEvent) -> MemoryTier:
         s = decision_impact_score(event)
-        if s >= self.semantic_threshold and event.metadata.get("is_summary") == "true":
+        is_summary = (
+            event.metadata.get("is_summary") == "true"
+            or event.source in self.SEMANTIC_SOURCES
+        )
+        if s >= self.semantic_threshold and is_summary:
             return MemoryTier.SEMANTIC
         if s >= self.episodic_threshold:
             return MemoryTier.EPISODIC
@@ -50,12 +60,26 @@ class HierarchicalMemoryManager:
         current_day: int,
         event_type: str | None = None,
         top_k: int = 5,
+        include_disputed: bool = False,
     ) -> List[MemoryRecord]:
+        """Select the memories that may enter a decision.
+
+        v0.2 filtered only SUPERSEDED and EXPIRED, so DISPUTED records -- claims
+        the updater explicitly declined to accept as knowledge -- passed straight
+        through into the utility feature vector at full weight (importance x
+        confidence). A single disputed theft rumour was therefore sufficient to
+        make a guard choose ``arrest_player``. DISPUTED records are now excluded
+        by default; pass ``include_disputed=True`` to inspect them.
+        """
+        excluded = {BeliefStatus.SUPERSEDED, BeliefStatus.EXPIRED}
+        if not include_disputed:
+            excluded.add(BeliefStatus.DISPUTED)
+
         cand = [
             m
             for m in memories
             if m.npc_id == npc_id
-            and m.status not in {BeliefStatus.SUPERSEDED, BeliefStatus.EXPIRED}
+            and m.status not in excluded
             and m.tier != MemoryTier.ARCHIVE
         ]
         scored = []
