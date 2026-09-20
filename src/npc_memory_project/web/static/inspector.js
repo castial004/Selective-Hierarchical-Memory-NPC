@@ -369,11 +369,28 @@ function renderDialogue(data) {
   textEl.textContent = data.dialogue || `[Performs ${data.selected_action}].`;
 
   if (badgeEl) {
-    if (data.grounded_factor) {
-      badgeEl.innerHTML = `<span style="color:#68d391;">✓ Certified Causal Reason:</span> "${escapeHtml(data.grounded_factor)}" <span style="color:#a0aec0; margin-left:8px; font-size:11px;">[Persona: ${escapeHtml(data.persona || 'in-character')}]</span>`;
-    } else {
-      badgeEl.innerHTML = `<span>✓ Certified Faithfully Grounded in Personality & Standing</span> <span style="color:#a0aec0; margin-left:8px; font-size:11px;">[Persona: ${escapeHtml(data.persona || 'in-character')}]</span>`;
-    }
+    // dialogue_source is reported by the backend: "deterministic" (template),
+    // "llm_verified" (model text that passed the grounding check) or
+    // "llm_rejected" (model text discarded, template restored).
+    const source = data.dialogue_source || 'deterministic';
+    const sourceLabel = {
+      deterministic: 'offline template',
+      llm_verified: 'LLM paraphrase, grounding verified',
+      llm_rejected: 'LLM output rejected — template restored'
+    }[source] || source;
+    const sourceColor = source === 'llm_rejected' ? '#f6ad55' : '#a0aec0';
+    const faithful = data.faithful !== false;
+
+    const prefix = faithful
+      ? (data.grounded_factor ? '<span style="color:#68d391;">✓ Certified Causal Reason:</span>' : '<span>✓ Grounded in persona & standing</span>')
+      : '<span style="color:#fc8181;">⚠ Ungrounded response withheld</span>';
+    const quoted = data.grounded_factor
+      ? ` "${escapeHtml(data.grounded_factor)}"`
+      : '';
+
+    badgeEl.innerHTML = `${prefix}${quoted} ` +
+      `<span style="color:${sourceColor}; margin-left:8px; font-size:11px;">` +
+      `[${escapeHtml(sourceLabel)} · Persona: ${escapeHtml(data.persona || 'in-character')}]</span>`;
   }
 }
 

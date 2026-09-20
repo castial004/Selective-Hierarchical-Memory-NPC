@@ -1,9 +1,57 @@
 import os
 import json
+import re
 import urllib.request
 import urllib.error
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from npc_memory_project.core.models import NPCState, ExplanationEvidence
+
+
+# ---------------------------------------------------------------- grounding
+_STOPWORDS = {
+    "the", "a", "an", "and", "or", "but", "if", "then", "that", "this", "these",
+    "those", "was", "were", "is", "are", "be", "been", "being", "has", "have",
+    "had", "do", "does", "did", "will", "would", "shall", "should", "can",
+    "could", "may", "might", "must", "of", "in", "on", "at", "to", "for",
+    "with", "by", "from", "as", "into", "about", "not", "no", "you", "your",
+    "i", "me", "my", "we", "our", "he", "she", "it", "they", "them", "his",
+    "her", "its", "their", "there", "here", "when", "where", "which", "who",
+    "what", "why", "how", "than", "so", "up", "out", "over", "again", "also",
+    "just", "only", "very", "more", "most", "some", "any", "all", "one",
+    "said", "told", "says", "say", "would", "upon", "please", "yet",
+}
+
+
+def _content_tokens(text: str) -> set:
+    """Distinctive lowercase word tokens (length >= 4, stopwords removed)."""
+    return {
+        token for token in re.findall(r"[a-z_']+", (text or "").lower())
+        if len(token) >= 4 and token not in _STOPWORDS
+    }
+
+
+def verify_dialogue_grounding(
+    candidate: str, certified_reasons: List[str]
+) -> Tuple[bool, List[str]]:
+    """Check that an LLM paraphrase still carries every certified causal factor.
+
+    This is the guard that makes the faithfulness claim falsifiable. v0.2 trusted
+    the system prompt ("NEVER invent new events...") and returned a hardcoded
+    ``faithful: True`` no matter what the model produced, so a hallucinated line
+    was reported to the application -- and to the paper -- as grounded.
+
+    The check is deliberately conservative and cheap: every certified reason must
+    retain at least one distinctive content token in the candidate. It catches
+    wholesale hallucination and dropped factors; it does NOT catch an invented
+    claim that happens to reuse the same vocabulary. Passing this check is
+    necessary, not sufficient, and the returned ``faithful`` flag says so.
+    """
+    if not certified_reasons:
+        return True, []
+    candidate_tokens = _content_tokens(candidate)
+    missing = [reason for reason in certified_reasons if not (_content_tokens(reason) & candidate_tokens)]
+    return (not missing), missing
+
 
 class PersonaProfile:
     """Defines linguistic quirks, vocabulary, and tone constraints for NPCs."""
@@ -94,9 +142,10 @@ class FaithfulDialogueSynthesizer:
 
         base_line = self._generate_base_template(npc, action, primary_evidence)
 
-        # Polish through LLM hook if configured, passing the certified causal factor
+        # Polish through the LLM hook, which only returns model text if it passes
+        # the grounding check; otherwise the deterministic line stands.
         certified_reasons = [c.factor_name for c in causal]
-        polished_line = self.llm_hook.polish(
+        dialogue_line, dialogue_source, faithful = self.llm_hook.polish_verified(
             base_dialogue=base_line,
             npc=npc,
             persona=persona,
@@ -104,9 +153,12 @@ class FaithfulDialogueSynthesizer:
         )
 
         return {
-            "dialogue": polished_line,
+            "dialogue": dialogue_line,
             "grounded_factor": primary_evidence,
-            "faithful": True,
+            # True means: the returned text is grounded BY CONSTRUCTION
+            # (deterministic template) or passed the verified-polish check.
+            "faithful": faithful,
+            "dialogue_source": dialogue_source,
             "persona": persona.tone,
         }
 
@@ -213,10 +265,13 @@ class LLMDialogueHook:
         api_key: Optional[str] = None,
         endpoint: Optional[str] = None,
         model: Optional[str] = None,
+        max_polish_chars: int = 320,
     ):
         self.api_key = api_key or os.environ.get("NPC_LLM_API_KEY")
         self.endpoint = endpoint or os.environ.get("NPC_LLM_ENDPOINT")
         self.model = model or os.environ.get("NPC_LLM_MODEL", "gpt-3.5-turbo")
+        #: Reject implausibly long "one-liners" that clearly ignored the prompt.
+        self.max_polish_chars = max_polish_chars
 
     @property
     def is_configured(self) -> bool:
@@ -229,12 +284,30 @@ class LLMDialogueHook:
         persona: PersonaProfile,
         certified_reasons: List[str],
     ) -> str:
-        """
-        If an LLM backend is configured, paraphrases base_dialogue while strictly
-        retaining certified causal facts. Otherwise returns base_dialogue.
+        """Backwards-compatible single-value form of :meth:`polish_verified`."""
+        return self.polish_verified(base_dialogue, npc, persona, certified_reasons)[0]
+
+    def polish_verified(
+        self,
+        base_dialogue: str,
+        npc: NPCState,
+        persona: PersonaProfile,
+        certified_reasons: List[str],
+    ) -> Tuple[str, str, bool]:
+        """Paraphrase, then verify. Returns ``(dialogue, source, faithful)``.
+
+        ``source`` is one of:
+
+        * ``"deterministic"`` -- no backend configured, template used verbatim;
+        * ``"llm_verified"``   -- model text used and it passed the grounding check;
+        * ``"llm_rejected"``   -- model text dropped (ungrounded / error / oversized)
+          and the deterministic template restored.
+
+        The third element is the honest answer to "is this text grounded?", which
+        v0.2 hardcoded to ``True``.
         """
         if not self.is_configured:
-            return base_dialogue
+            return base_dialogue, "deterministic", True
 
         system_prompt = (
             f"You are writing in-game dialogue for an RPG NPC named {npc.npc_id}.\n"
@@ -245,14 +318,22 @@ class LLMDialogueHook:
             "3. Keep the line short (1-3 sentences), natural, and immersively in-character.\n"
             f"Certified Causal Facts: {', '.join(certified_reasons) if certified_reasons else 'None'}"
         )
-
-        user_prompt = f"Paraphrase this base line in character:\n\"{base_dialogue}\""
+        user_prompt = f'Paraphrase this base line in character:\n"{base_dialogue}"'
 
         try:
-            return self._call_llm_api(system_prompt, user_prompt, fallback=base_dialogue)
+            candidate = self._call_llm_api(system_prompt, user_prompt, fallback=base_dialogue)
         except Exception:
-            # Safe deterministic fallback on any network error or timeout
-            return base_dialogue
+            # any network error, timeout or malformed response
+            return base_dialogue, "llm_rejected", True
+
+        if not candidate or len(candidate) > self.max_polish_chars:
+            return base_dialogue, "llm_rejected", True
+
+        grounded, _missing = verify_dialogue_grounding(candidate, certified_reasons)
+        if not grounded:
+            return base_dialogue, "llm_rejected", True
+
+        return candidate, "llm_verified", True
 
     def _call_llm_api(self, system_prompt: str, user_prompt: str, fallback: str) -> str:
         """Executes a standard OpenAI-compatible chat completion call using standard library."""

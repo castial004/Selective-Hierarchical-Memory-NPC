@@ -90,3 +90,4 @@ class ExplanationEvidence:
     score_without_factor:float
     changed_action:bool
     score_delta:float
+    memory_id:str=""          # which retrieved memory was ablated

@@ -6,6 +6,7 @@ from npc_memory_project.core.models import (
     ActionScore,
     DecisionTrace,
 )
+from npc_memory_project.core.features import FEATURE_KEYS, features_of
 from npc_memory_project.decision.valid_actions import valid_actions
 
 class UtilityDecisionEngine:
@@ -16,27 +17,26 @@ class UtilityDecisionEngine:
     """
 
     def _features(self, memories: List[MemoryRecord]) -> Tuple[float, float, float, float, float]:
-        theft = max(
-            [m.importance * m.confidence for m in memories if "theft" in m.event_type],
-            default=0.0,
-        )
-        innocence = max(
-            [m.importance * m.confidence for m in memories if "innocence" in m.event_type],
-            default=0.0,
-        )
-        helpv = max(
-            [m.importance * m.confidence for m in memories if "help" in m.event_type],
-            default=0.0,
-        )
-        rumour = max(
-            [m.importance * m.confidence for m in memories if "rumour" in m.event_type],
-            default=0.0,
-        )
-        confession = max(
-            [m.importance * m.confidence for m in memories if "confess" in m.event_type],
-            default=0.0,
-        )
-        return theft, innocence, helpv, rumour, confession
+        """Aggregate activated memories into the causal feature vector.
+
+        Resolution is delegated to :func:`npc_memory_project.core.features.features_of`,
+        which prefers an explicit ``metadata["feature_key"]`` and falls back to
+        the legacy ``event_type`` keyword scan. Each feature takes the strongest
+        activated memory on that channel::
+
+            f_k = max over m in M_ret where k in features_of(m) of  I(m) * C(m)
+
+        Because SEMANTIC beliefs only became addressable once they carried an
+        explicit feature key, this is also what finally gives the Semantic tier
+        influence over decisions instead of it being a retrieval-only passenger.
+        """
+        strongest: Dict[str, float] = {key: 0.0 for key in FEATURE_KEYS}
+        for m in memories:
+            activated = m.importance * m.confidence
+            for key in features_of(m):
+                if activated > strongest[key]:
+                    strongest[key] = activated
+        return tuple(strongest[key] for key in FEATURE_KEYS)  # type: ignore[return-value]
 
     def score_actions(
         self,

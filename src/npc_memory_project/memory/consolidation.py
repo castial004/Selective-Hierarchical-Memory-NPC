@@ -2,6 +2,7 @@ from dataclasses import replace
 from typing import List, Dict
 import uuid
 
+from npc_memory_project.core.features import feature_key_for_claim
 from npc_memory_project.core.models import (
     MemoryRecord,
     MemoryTier,
@@ -57,6 +58,7 @@ class SemanticConsolidator:
                     f"Factual consensus established: {best_active.summary} "
                     f"(previous contradictory claims superseded)."
                 )
+                consensus_feature = feature_key_for_claim(best_active.metadata.get("claim"))
                 semantic_rec = MemoryRecord(
                     event_id=f"semantic-{uuid.uuid4().hex[:8]}",
                     npc_id=npc_id,
@@ -73,6 +75,9 @@ class SemanticConsolidator:
                         "conflict_key": ck,
                         "semantic_group_id": group_key,
                         "derived_from": ",".join(m.event_id for m in group),
+                        # without an explicit feature key this record is inert
+                        # in the utility engine (see core/features.py)
+                        **({"feature_key": consensus_feature} if consensus_feature else {}),
                     },
                 )
                 new_semantics.append(semantic_rec)
@@ -107,6 +112,7 @@ class SemanticConsolidator:
                         "semantic_group_id": group_key,
                         "target_actor": actor,
                         "interaction_count": str(len(group)),
+                        "feature_key": "help",
                     },
                 )
                 new_semantics.append(semantic_rec)
