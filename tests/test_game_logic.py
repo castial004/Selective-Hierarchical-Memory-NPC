@@ -275,10 +275,13 @@ def test_headless_render_smoke(tmp_path):
 
     game = Game(headless=True)
     game.update(0.016)
-    game.draw()
+    game.render()
     out = tmp_path / "world.png"
-    pygame.image.save(game.screen, str(out))
+    # the presented window, which is what a player sees: the world pass plus the
+    # native-resolution UI pass drawn over it
+    pygame.image.save(game.display.window, str(out))
     assert out.exists() and out.stat().st_size > 2000
+    assert game.display.window.get_size() == (960, 640)
 
     # the real movement path, with float coordinates, must not raise
     start = (game.player.x, game.player.y)
@@ -297,11 +300,56 @@ def test_headless_render_smoke(tmp_path):
 
     # every scene renders without raising
     game.open_dialogue("mira")
-    game.draw()
+    game.render()
     game.page_index = len(game.pages) - 1
     game.revealed = float(len(game.page_text))
-    game.draw()
+    game.render()
     for scene in ("shop", "memory", "help", "day"):
         game.scene = scene
-        game.draw()
+        game.render()
     pygame.quit()
+
+
+def test_ui_pass_draws_readable_text_at_any_window_size(tmp_path):
+    """The regression this test exists for: the inspector must stay legible.
+
+    The UI used to be part of the scaled logical frame, so on a 1400x933 window a
+    13 px label was resampled by 1.46 and turned to mush. The two-pass renderer
+    draws the UI at the window's own resolution, so here we assert the properties
+    that fix actually buys:
+
+    * the font a given logical size resolves to grows with the window, and
+    * text keeps roughly its share of the window height (it never gets *smaller*
+      relative to the window), and
+    * full-screen panels span past the letterboxed frame and use the whole window.
+    """
+    pygame = pytest.importorskip("pygame", reason="game extra not installed")
+    import os
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+
+    from npc_memory_project.game.app import Game
+    from npc_memory_project.game.ui import window_canvas
+
+    fonts = {}
+    shares = {}
+    spans = {}
+    for size in ((960, 640), (1400, 933), (1920, 1080)):
+        game = Game(headless=True, window_size=size)
+        game.scene = "memory"
+        game.render()
+
+        canvas = window_canvas(game.display)
+        # a 15 px label is drawn with a 15 x factor px font, never scaled afterwards
+        assert canvas.font_size(15) == max(9, round(15 * canvas.factor))
+        fonts[size] = canvas.font_size(15)
+        shares[size] = fonts[size] / size[1]
+        spans[size] = canvas.span_w
+        pygame.quit()
+
+    assert fonts[(960, 640)] < fonts[(1400, 933)] < fonts[(1920, 1080)]
+    # constant share of the window, not a collapsing one
+    assert all(0.020 < share < 0.026 for share in shares.values())
+    # the inspector is laid out over the whole surface, letterbox bars included
+    assert spans[(1920, 1080)] > 960
+    assert spans[(960, 640)] == 960

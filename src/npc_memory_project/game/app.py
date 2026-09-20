@@ -20,6 +20,7 @@ import pygame
 
 from npc_memory_project.game.assets import CHAR_H, CHAR_W, SCALE, TILE_PX, SpriteFactory
 from npc_memory_project.game.display import Display
+from npc_memory_project.game.ui import UiCanvas, window_canvas
 from npc_memory_project.game.conversation import (
     Choice, GameContext, apply_effect, available_choices, entry_node, get_node,
     memory_rows, quest_hint,
@@ -87,7 +88,10 @@ class Game:
         # map is smaller than the viewport and pins the view to the corner
         self.town: TownMap = build_town(tile_size=TILE_PX)
         self.sprites = SpriteFactory()
-        self.renderer = Renderer(self.screen, self.sprites)
+        self.renderer = Renderer(
+            self.screen, self.sprites,
+            ui=UiCanvas.for_logical(self.screen, logical_size=WINDOW),
+        )
         self.camera = Camera(WINDOW, self.town.pixel_size())
         self.wallet = Wallet(gold=40)
         self.ctx = GameContext(sim=self.sim, wallet=self.wallet)
@@ -369,14 +373,33 @@ class Game:
         return now < was
 
     # ----------------------------------------------------------------- draw
-    def draw(self) -> None:
+    def render(self) -> None:
+        """One frame, in two passes.
+
+        The world is drawn to the logical surface and scaled into the window; then
+        the window is presented; then the UI is drawn *on top of the presented
+        window* at its real resolution. Text is therefore never resampled, which
+        is what made the inspector unreadable on a resized window.
+        """
+        self.draw_world()
+        self.display.present(flip=False)
+        self.renderer.attach_ui(window_canvas(self.display))
+        self.draw_ui()
+        pygame.display.flip()
+
+    def draw_world(self) -> None:
         self.screen.fill((24, 26, 34))
+        self.renderer.draw_world(self.town, self.camera, self.player,
+                                 list(self.npcs.values()))
+
+    def draw_ui(self) -> None:
+        """Pass 2. Everything here is text or a panel, so it stays crisp."""
         target = self.nearest_npc()
         prompt = "E  talk" if target and self.scene == "world" else None
         prompt_at = (target.x + target.w / 2, target.y - 6) if target else (0, 0)
 
-        self.renderer.draw_world(self.town, self.camera, self.player,
-                                 list(self.npcs.values()), prompt, prompt_at)
+        self.renderer.draw_world_labels(self.camera, list(self.npcs.values()),
+                                        self.player, prompt, prompt_at)
 
         self.renderer.draw_hud(
             day=self.sim.world.game_day,
@@ -400,16 +423,7 @@ class Game:
             self.renderer.draw_help()
 
         if self.toast_timer > 0 and self.scene in {"world", "dialogue", "shop"}:
-            from npc_memory_project.game.assets import pixel_text, wrap_text
-
-            lines = wrap_text(self.toast, 16, 620)[:3]
-            box_h = 18 + len(lines) * 22
-            box = pygame.Surface((660, box_h), pygame.SRCALPHA)
-            box.fill((20, 18, 30, 226))
-            pygame.draw.rect(box, (110, 104, 140), box.get_rect(), 2, border_radius=8)
-            for index, line in enumerate(lines):
-                box.blit(pixel_text(line, 16, (240, 236, 250)), (16, 10 + index * 22))
-            self.screen.blit(box, (self.width_centre(box), 60))
+            self.renderer.draw_toast(self.toast)
 
     @staticmethod
     def width_centre(surface: pygame.Surface) -> int:
@@ -421,7 +435,7 @@ class Game:
         name = self.active_npc.capitalize() if self.active_npc else ""
         text = self.page_text
         shown = text[: int(self.revealed)]
-        wrapped = wrap_text(shown or " ", 20, self.renderer.width - 220)
+        wrapped = self.renderer.ui.wrap(shown or " ", 21, self.renderer.width - 220)
         show_choices = self.page_done() and self.last_page()
 
         rows: List[Dict[str, object]] = []
@@ -534,8 +548,7 @@ class Game:
             for event in pygame.event.get():
                 self.handle_event(event)
             self.update(dt)
-            self.draw()
-            self.display.present()
+            self.render()
             frames += 1
             if max_frames is not None and frames >= max_frames:
                 break
@@ -543,10 +556,20 @@ class Game:
 
 
 # ------------------------------------------------------------------ CLI
-def _prepare_scene(game: Game, scene: str) -> None:
-    """Set up a deterministic state for screenshotting."""
-    if scene in {"dialogue", "day3", "shop", "memory"}:
+def _prepare_scene(game: Game, scene: str, day: Optional[int] = None) -> None:
+    """Set up a deterministic state for screenshotting.
+
+    ``day`` overrides the scene's default (which is "far enough in for the case to
+    be resolved"): ``--day 1`` captures the town before the exoneration, which is
+    how the refusal screenshot is made without hand-editing state.
+    """
+    if day is None and scene in {"dialogue", "day3", "shop", "memory"}:
         for _ in range(3):
+            game.sim.advance_day()
+    elif day == 1:
+        pass                                   # day 1 is the opening state
+    elif day is not None:
+        while game.sim.world.game_day < day:
             game.sim.advance_day()
 
     if scene == "dialogue":
@@ -582,9 +605,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         help="explicit initial window size, e.g. 1600x900")
     parser.add_argument("--fullscreen", action="store_true",
                         help="start fullscreen (F11 toggles at runtime)")
+    parser.add_argument("--day", type=int, default=None,
+                        help="with --screenshot: advance to this day first "
+                             "(--day 1 shows the town before the resolution)")
     parser.add_argument("--capture-window", action="store_true",
-                        help="with --screenshot, save the scaled window instead of "
-                             "the logical frame")
+                        help="deprecated: --screenshot always saves the presented "
+                             "window now (identical to the logical frame at 1x)")
     args = parser.parse_args(argv)
 
     scale = args.scale
@@ -599,13 +625,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.screenshot:
         game = Game(headless=True, scale=scale, fullscreen=args.fullscreen,
                     window_size=window_size)
-        _prepare_scene(game, args.scene)
-        game.draw()
-        if args.capture_window:
-            game.display.present()          # scale the logical frame into the window
-            target = game.display.window
-        else:
-            target = game.screen
+        _prepare_scene(game, args.scene, args.day)
+        game.render()
+        # always the presented window: at scale 1.0 that is the 960x640 logical
+        # frame, larger sizes get the same frame with its crisp UI pass on top
+        target = game.display.window
         pygame.image.save(target, args.screenshot)
         print(f"screenshot written to {args.screenshot} "
               f"({target.get_width()}x{target.get_height()}, scene={args.scene}, "

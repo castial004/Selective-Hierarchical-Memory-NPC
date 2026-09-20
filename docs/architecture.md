@@ -80,3 +80,30 @@ Two caveats stated in the code and in the paper draft:
 * the intervention is "the NPC had forgotten this", not "this never happened";
 * ablation covers retrieved memories only — trust, personality and world flags
   are not ablated.
+
+## Rendering: two passes, and why text is not scaled
+
+The pygame front end renders in two passes, and the split is deliberate:
+
+* **world pass** (`game/renderer.py::draw_world`) draws tiles, characters and
+  shadows into a fixed 960x640 logical surface. `game/display.py` scales that
+  surface into the real window with nearest-neighbour where it can, so pixel art
+  stays blocky and crisp.
+* **UI pass** (`game/ui.py::UiCanvas`) draws text, panels and the reply cursor
+  directly onto the presented window, with fonts created at
+  ``logical_size x window_factor`` pixels. Nothing drawn here is ever resampled.
+
+v0.4.0 scaled *everything*, including text, which made the memory inspector
+unreadable on a resized window. The UI pass is the fix. Two properties make it
+work:
+
+1. **Scale-invariant layout.** `UiCanvas.measure`/`wrap` use the logical font
+   metrics, not the window-scaled ones, so a panel wraps to identical lines at
+   every window size and resizing never re-flows a conversation.
+2. **Surface-span layout.** `UiCanvas.origin`/`span_w` describe the logical
+   rectangle the whole surface covers, letterbox bars included, so full-screen
+   panels spread across the window instead of hugging the letterboxed frame.
+
+Text is also rendered with antialiasing on the UI pass (the world keeps hard
+edges), which is what makes the small meta lines legible at any size.
+

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "npc-memory-project"
-version = "0.4.0"
+version = "0.4.1"
 description = "Selective hierarchical memory for faithful explainable NPC decision-making"
 readme = "README.md"
 requires-python = ">=3.10"

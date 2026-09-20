@@ -40,10 +40,15 @@ def surface_from_spec(spec: List[str], palette: Mapping[str, tuple],
     return pygame.transform.scale(base, (size * scale, size * scale))
 
 
-def _font(size: int, bold: bool) -> pygame.font.Font:
-    font = pygame.font.Font(None, max(12, size))
+def font_for(size: int, bold: bool = False) -> pygame.font.Font:
+    """The one font factory. Public because game/ui.py sizes fonts per window."""
+    font = pygame.font.Font(None, max(12, int(size)))
     font.set_bold(bold)
     return font
+
+
+#: Kept as the internal alias other helpers in this module already use.
+_font = font_for
 
 
 def pixel_text(text: str, size: int, color, bold: bool = False) -> pygame.Surface:

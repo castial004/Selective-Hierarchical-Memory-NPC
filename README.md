@@ -64,22 +64,47 @@ Resolve the case and the same conversation changes:
 | drag window edge | the view scales to fit and letterboxes |
 | F1 | help · ESC close |
 
-### Window size and fullscreen
+### Window size, fullscreen, and why the text stays sharp
 
-The game always draws to a fixed logical frame (960x640) and scales that frame
-into whatever window you have, so nothing re-flows and the pixel art stays
-crisp at whole-number multiples.
+Frames are drawn in two passes:
+
+1. **world** -- tiles, characters, shadows, drawn to a fixed 960x640 logical frame
+   and scaled into your window. Blocky on purpose; that is pixel art.
+2. **UI** -- HUD, dialogue, shop, memory inspector and help, drawn *after* the
+   world is scaled, straight onto the window at its real resolution. Fonts are
+   created at their final pixel height, so they are never resampled.
 
 ```bash
 npc-memory-game                          # 960x640 window
 npc-memory-game --scale 2                # 1920x1280
 npc-memory-game --window 1600x900        # exact size, letterboxed to fit
 npc-memory-game --fullscreen             # start fullscreen
-npc-memory-game --screenshot big.png --scene dialogue --scale 2 --capture-window
+npc-memory-game --screenshot big.png --scene dialogue --window 1600x1000
 ```
 
 In-game: **F11** toggles fullscreen, **F10** cycles 1x / 1.25x / 1.5x / 2x, and
 dragging the window edge resizes live.
+
+The two passes exist because of a real bug. When the whole frame was scaled -- as
+it was in v0.4.0 -- a 13 px label on a 1400x933 window went through a 1.46x
+resample and turned to mush, and the memory inspector became unreadable:
+
+| before: the panel was part of the scaled frame | after: the panel is drawn at window resolution |
+|---|---|
+| ![](docs/screenshots/08-inspector-v040-blurry.png) | ![](docs/screenshots/09-inspector-fixed-crop.png) |
+
+At 1920x1080 the inspector now uses the whole window rather than the letterboxed
+column, and lists as many records as fit:
+
+![Memory inspector at fullscreen](docs/screenshots/06-inspector-fullscreen.png)
+
+Dialogue at a non-integer window size (1600x1000), the case that used to be
+worst:
+
+![Dialogue at 1600x1000](docs/screenshots/07-dialogue-large.png)
+
+Layout is scale-invariant: panel text wraps to the same lines at every window
+size, so resizing never re-flows a conversation mid-sentence.
 
 ### Quests and shops
 
@@ -115,7 +140,12 @@ Headless for CI or screenshotting:
 
 ```bash
 npc-memory-game --screenshot out.png --scene dialogue
+npc-memory-game --screenshot day1.png --scene dialogue --day 1     # before the resolution
+npc-memory-game --screenshot big.png --scene memory --window 1920x1080
 ```
+
+`--screenshot` always saves the presented window: at 1x that is the 960x640
+frame, and at any larger size the same frame with its sharp UI pass on top.
 
 ## Interactive web simulator
 

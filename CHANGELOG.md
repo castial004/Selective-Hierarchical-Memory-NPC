@@ -1,5 +1,55 @@
 # Changelog
 
+## v0.4.1 -- the UI is drawn at window resolution
+
+v0.4.0 made the window scalable but scaled *everything* in it, text included. On a
+resized or fullscreen window that meant a 13 px label went through a 1.46x
+resample: the memory inspector's text turned to mush and its cause lines were
+truncated mid-sentence. Reported from a 1400x933 window, reproduced exactly, fixed
+here.
+
+### Two-pass rendering
+
+| pass | what | how |
+|---|---|---|
+| 1 | world: tiles, characters, shadows | fixed 960x640 logical frame, scaled into the window by `display.py` (blocky, on purpose) |
+| 2 | UI: HUD, dialogue, shop, inspector, help, world labels, toast | drawn *after* presenting, straight onto the window, fonts created at `logical_size x factor` px -- never resampled |
+
+New module `game/ui.py` (`UiCanvas`, `window_canvas`). The UI is antialiased; the
+world keeps hard pixel edges.
+
+* **Scale-invariant layout** -- `measure`/`wrap` use logical font metrics, so
+  panels wrap to the same lines at every window size and resizing never re-flows a
+  conversation.
+* **Surface-span layout** -- `origin`/`span_w` describe the logical rectangle the
+  whole surface covers, so the inspector and help screens use the full window
+  instead of the letterboxed column. The HUD and footer bars now span edge to edge.
+* The inspector shows as many records as the window can hold, wraps the certified
+  cause over up to three lines **in full** (it used to clip at the column edge with
+  an ellipsis), and wraps summaries instead of cutting them at 34 characters.
+
+### Also fixed
+
+* Reply cursor and "more replies" marker rendered as tofu boxes (`▶`, `▼` are not in
+  pygame's default font). They are drawn shapes now.
+* Shop hint used `↑/↓`, which was also two tofu boxes; it reads `UP / DOWN`.
+* `--screenshot` saves the presented window at any size, so the old
+  `--capture-window` distinction is gone (the flag is kept as a no-op alias).
+* `Game.draw()` became `draw_world()` + `draw_ui()` + `render()`; the headless test
+  now saves the window rather than the pre-UI logical frame.
+
+### New
+
+* `--day N` for `--screenshot`, so the day-1 refusal capture is reproducible from
+  the CLI instead of hand-edited state.
+* `tests/test_ui_canvas.py` (13 tests) and a scale test in `tests/test_game_logic.py`
+  pinning the contract: fonts are rendered at final size, layout is scale-invariant,
+  and full-screen panels really do cover the letterbox area.
+* Screenshots regenerated with the new pipeline, plus a fullscreen inspector and a
+  1600x1000 dialogue capture, and a before/after pair in the README.
+
+Tests 107 -> **120**.
+
 ## v0.4.0 -- window scaling and research validation
 
 Two unrelated pieces of work, both from the same audit pass: the game now fills any

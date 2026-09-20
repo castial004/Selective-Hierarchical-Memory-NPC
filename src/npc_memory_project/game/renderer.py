@@ -1,9 +1,19 @@
-"""Rendering: tile world, characters, HUD, dialogue box, shop and memory panels.
+"""Rendering, in two passes: the pixel world, then a native-resolution UI.
 
-The dialogue box is deliberately Genshin-shaped -- a portrait plate, a name
-label, a typewritten body, and a numbered list of selectable replies, with the
-counterfactually certified reason shown as a small tag so the research claim is
-visible in-game rather than only in a paper.
+**Pass 1 -- world.** Tiles, characters and shadows are drawn to the logical
+960x640 surface and scaled into the window. Blocky on purpose; that is what pixel
+art is supposed to do.
+
+**Pass 2 -- UI.** Every piece of text, every panel, drawn straight onto the window
+after presenting, at the window's real resolution (see ``game/ui.py``). Text is
+never resampled, so it stays sharp when the window is resized or fullscreen. This
+is the fix for the memory inspector being unreadable at 1.46x: the panel used to
+be part of the scaled frame, so a 13 px font went through a resample and turned to
+mush.
+
+The dialogue box keeps its Genshin shape -- portrait plate, name label, typewritten
+body, numbered replies -- with the counterfactually certified reason shown as its
+own tag, so the research claim is visible in-game rather than only in a paper.
 """
 
 from __future__ import annotations
@@ -14,8 +24,9 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import pygame
 
 from npc_memory_project.game.assets import (
-    CHAR_H, CHAR_W, SCALE, TILE_PX, SpriteFactory, pixel_text, wrap_text,
+    CHAR_H, CHAR_W, SCALE, TILE_PX, SpriteFactory,
 )
+from npc_memory_project.game.ui import UiCanvas
 from npc_memory_project.game.world_map import Tile, TownMap
 
 # ------------------------------------------------------------------ palette
@@ -74,16 +85,24 @@ class ShopView:
 
 
 class Renderer:
-    def __init__(self, screen: pygame.Surface, sprites: SpriteFactory) -> None:
+    def __init__(self, screen: pygame.Surface, sprites: SpriteFactory,
+                 ui: Optional[UiCanvas] = None) -> None:
         self.screen = screen
         self.sprites = sprites
         self.width, self.height = screen.get_size()
+        #: Pass-2 canvas. Logical by default (used for the 1x captures) and
+        #: swapped for a window-bound canvas every frame by ``Game.render``.
+        self.ui = ui if ui is not None else UiCanvas.for_logical(
+            screen, logical_size=(self.width, self.height))
         self.choice_rects: List[pygame.Rect] = []
+
+    def attach_ui(self, ui: UiCanvas) -> None:
+        """Point the UI pass at a canvas (logical or window-resolution)."""
+        self.ui = ui
 
     # ------------------------------------------------------------- world
     def draw_world(self, town: TownMap, camera, player: "Entity",
-                   npcs: Sequence["Entity"], prompt: Optional[str] = None,
-                   prompt_at: Tuple[int, int] = (0, 0)) -> None:
+                   npcs: Sequence["Entity"]) -> None:
         x_range, y_range = camera.visible_tiles(TILE_PX)
 
         # ground pass
@@ -117,104 +136,112 @@ class Renderer:
             else:
                 self._draw_entity(payload, camera)   # type: ignore[arg-type]
 
-        if prompt:
-            self._draw_prompt(prompt, prompt_at, camera)
-
     def _draw_entity(self, entity: "Entity", camera) -> None:
         sx, sy = camera.world_to_screen(entity.x, entity.y)
         shadow = pygame.Surface((entity.w, 10), pygame.SRCALPHA)
         pygame.draw.ellipse(shadow, (0, 0, 0, 70), shadow.get_rect())
         self.screen.blit(shadow, (sx, sy + entity.h - 6))
-
         sprite = self.sprites.character(entity.sprite_id, entity.facing, entity.frame)
         self.screen.blit(sprite, (sx, sy))
 
-        if entity.label:
-            text = pixel_text(entity.label, 14, TEXT, bold=True)
-            plate = pygame.Surface((text.get_width() + 8, text.get_height() + 4),
-                                   pygame.SRCALPHA)
-            plate.fill((18, 16, 26, 170))
-            self.screen.blit(plate, (sx + entity.w // 2 - plate.get_width() // 2,
-                                     sy - plate.get_height() - 2))
-            self.screen.blit(text, (sx + entity.w // 2 - text.get_width() // 2,
-                                    sy - text.get_height())) 
+    def draw_world_labels(self, camera, npcs: Sequence["Entity"], player: "Entity",
+                          prompt: Optional[str] = None,
+                          prompt_at: Tuple[float, float] = (0, 0)) -> None:
+        """Name plates and the ``E talk`` prompt, drawn in the UI pass.
 
-    def _draw_prompt(self, text: str, at: Tuple[int, int], camera) -> None:
+        They follow entities in the world, but they are *text*, so they belong to
+        the crisp pass: at 2x a name rendered into the scaled frame is a blocky
+        smear, and this is the one label the player looks at while walking.
+        """
+        for entity in list(npcs) + [player]:
+            if not entity.label:
+                continue
+            sx, sy = camera.world_to_screen(entity.x, entity.y)
+            surface = self.ui.text(entity.label, 14, TEXT, bold=True)
+            width = self.ui.measure(entity.label, 14, bold=True)
+            height = surface.get_height() / self.ui.factor
+            plate_w, plate_h = width + 8, height + 4
+            plate_x = sx + entity.w / 2 - plate_w / 2
+            plate_y = sy - plate_h - 2
+            self.ui.fill((18, 16, 26, 170), (plate_x, plate_y, plate_w, plate_h))
+            self.ui.blit_center(surface, sx + entity.w / 2, plate_y + 2)
+
+        if prompt:
+            self._draw_prompt(prompt, prompt_at, camera)
+
+    def _draw_prompt(self, text: str, at: Tuple[float, float], camera) -> None:
         sx, sy = camera.world_to_screen(*at)
-        surf = pixel_text(text, 16, INK, bold=True)
-        box = pygame.Surface((surf.get_width() + 14, surf.get_height() + 10), pygame.SRCALPHA)
-        pygame.draw.rect(box, (246, 240, 210, 240), box.get_rect(), border_radius=6)
-        pygame.draw.rect(box, INK, box.get_rect(), 2, border_radius=6)
-        box.blit(surf, (7, 5))
-        self.screen.blit(box, (sx - box.get_width() // 2, sy - box.get_height()))
+        surface = self.ui.text(text, 16, INK, bold=True)
+        width = self.ui.measure(text, 16, bold=True)
+        height = surface.get_height() / self.ui.factor
+        box_w, box_h = width + 14, height + 10
+        box_x = sx - box_w / 2
+        box_y = sy - box_h
+        self.ui.panel((box_x, box_y, box_w, box_h), (246, 240, 210, 240),
+                      INK, width=2, radius=6)
+        self.ui.blit(surface, (box_x + 7, box_y + 5))
 
     # --------------------------------------------------------------- HUD
     def draw_hud(self, day: int, gold: int, item_count: int, quest_hint: str,
                  npc_name: str = "", interacting: bool = False) -> None:
-        bar = pygame.Surface((self.width, 40), pygame.SRCALPHA)
-        bar.fill((16, 14, 24, 190))
-        self.screen.blit(bar, (0, 0))
+        ui = self.ui
+        ui.fill_row((16, 14, 24, 190), 0, 40)
 
-        left = pixel_text(f"DAY {day}", 20, GOLD, bold=True)
-        self.screen.blit(left, (16, 11))
-        gold_text = pixel_text(f"{gold} GOLD", 18, GOLD)
-        self.screen.blit(gold_text, (150, 12))
-        bag = pixel_text(f"{item_count} ITEMS", 18, MUTED)
-        self.screen.blit(bag, (300, 12))
+        left = ui.origin_x
+        right = ui.origin_x + ui.span_w
+        ui.blit(ui.text(f"DAY {day}", 21, GOLD, bold=True), (left + 16, 10))
+        ui.blit(ui.text(f"{gold} GOLD", 19, GOLD), (left + 150, 11))
+        ui.blit(ui.text(f"{item_count} ITEMS", 19, MUTED), (left + 300, 11))
 
-        hint = pixel_text(quest_hint, 15, TEXT)
-        if hint.get_width() > 430:                    # keep it clear of the edge
-            while hint.get_width() > 430 and len(quest_hint) > 8:
-                quest_hint = quest_hint[:-1]
-                hint = pixel_text(quest_hint.rstrip() + "…", 15, TEXT)
-        self.screen.blit(hint, (self.width - hint.get_width() - 16, 14))
+        # quest hint, right aligned, clipped with an ellipsis if it would collide
+        limit = max(240, ui.span_w - 660)
+        hint = quest_hint
+        while ui.measure(hint, 16) > limit and len(hint) > 8:
+            hint = hint[:-1]
+        if hint != quest_hint:
+            hint = hint.rstrip() + "…"
+        ui.text_right(hint, 16, TEXT, right - 16, 13)
 
-        controls = pixel_text("WASD move   E talk   N next day   J memory   F1 help", 13, MUTED)
-        footer = pygame.Surface((self.width, 22), pygame.SRCALPHA)
-        footer.fill((16, 14, 24, 170))
-        self.screen.blit(footer, (0, self.height - 22))
-        self.screen.blit(controls, (16, self.height - 18))
+        ui.fill_row((16, 14, 24, 170), ui.origin_y + ui.span_h - 24, 24)
+        ui.blit(ui.text("WASD move   E talk   N next day   J memory   F1 help", 14, MUTED),
+                (left + 16, ui.origin_y + ui.span_h - 20))
 
         if npc_name:
-            name = pixel_text(npc_name, 15, ACCENT, bold=True)
-            self.screen.blit(name, (self.width - name.get_width() - 16, 44))
+            ui.text_right(npc_name, 16, ACCENT, right - 16, 44, bold=True)
 
     # ---------------------------------------------------------- dialogue
     def draw_dialogue(self, view: DialogueView) -> None:
+        ui = self.ui
         box_h = 336
         box = pygame.Rect(24, self.height - box_h - 30, self.width - 48, box_h)
-        panel = pygame.Surface(box.size, pygame.SRCALPHA)
-        panel.fill(PANEL)
-        pygame.draw.rect(panel, PANEL_EDGE, panel.get_rect(), 3, border_radius=10)
-        self.screen.blit(panel, box.topleft)
+        ui.panel(box, PANEL, PANEL_EDGE, width=3, radius=10)
 
         # portrait plate
         portrait_box = pygame.Rect(box.x + 16, box.y + 16, 132, 150)
-        pygame.draw.rect(self.screen, (20, 18, 30), portrait_box, border_radius=8)
-        pygame.draw.rect(self.screen, PANEL_EDGE, portrait_box, 2, border_radius=8)
+        ui.panel(portrait_box, (20, 18, 30), PANEL_EDGE, width=2, radius=8)
         face = self.sprites.portrait(view.speaker, 116)
-        self.screen.blit(face, (portrait_box.x + 8, portrait_box.y + 10))
+        ui.sprite(face, (portrait_box.x + 8, portrait_box.y + 10), logical_size=116)
 
-        name = pixel_text(view.label.upper(), 20, ACCENT, bold=True)
+        name = ui.text(view.label.upper(), 21, ACCENT, bold=True)
+        name_w = ui.measure(view.label.upper(), 21, bold=True)
         plate = pygame.Rect(box.x + 16, portrait_box.bottom + 8,
-                            max(name.get_width() + 20, 132), name.get_height() + 12)
-        pygame.draw.rect(self.screen, (34, 30, 48), plate, border_radius=6)
-        pygame.draw.rect(self.screen, PANEL_EDGE, plate, 2, border_radius=6)
-        self.screen.blit(name, (plate.x + 10, plate.y + 6))
+                            max(name_w + 20, 132), 32)
+        ui.panel(plate, (34, 30, 48), PANEL_EDGE, width=2, radius=6)
+        ui.blit(name, (plate.x + 10, plate.y + 6))
 
-        # certified causal reason tag -- its own line, above the speech
         text_x = box.x + 172
         text_w = box.right - text_x - 24
+
+        # certified causal reason tag -- its own line, above the speech
         if view.certified_reason:
-            tag = "CAUSAL CAUSE CERTIFIED BY ABLATION:  " + view.certified_reason
-            label = pixel_text(tag, 13, WARN)
-            if label.get_width() > text_w:
-                label = label.subsurface(pygame.Rect(0, 0, text_w, label.get_height())).copy()
-            self.screen.blit(label, (text_x, box.y + 14))
+            tag_y = box.y + 12
+            for line in ui.wrap("CAUSAL CAUSE CERTIFIED BY ABLATION:  " + view.certified_reason,
+                                14, text_w)[:2]:
+                ui.blit(ui.text(line, 14, WARN), (text_x, tag_y))
+                tag_y += 18
 
         if view.dialogue_source == "llm_rejected":
-            warn = pixel_text("UNGROUNDED LLM LINE REJECTED", 13, DANGER)
-            self.screen.blit(warn, (text_x, box.y + 32))
+            ui.blit(ui.text("UNGROUNDED LLM LINE REJECTED", 14, DANGER), (text_x, box.y + 52))
 
         # body text with the typewriter cut
         line_height = 30
@@ -226,7 +253,7 @@ class Renderer:
             if consumed + len(line) > budget:
                 visible = line[: max(0, budget - consumed)]
             if visible:
-                self.screen.blit(pixel_text(visible, 20, TEXT), (text_x, y))
+                ui.blit(ui.text(visible, 21, TEXT), (text_x, y))
             consumed += len(line) + 1
             y += line_height
             if y > box.y + 148:
@@ -235,8 +262,8 @@ class Renderer:
         # choices
         self.choice_rects = []
         if not view.show_choices:
-            hint = pixel_text("SPACE / ENTER to continue", 14, MUTED)
-            self.screen.blit(hint, (box.right - hint.get_width() - 24, box.bottom - 30))
+            ui.text_right("SPACE / ENTER to continue", 15, MUTED,
+                          box.right - 24, box.bottom - 32)
             return
 
         list_y = box.y + 150
@@ -249,43 +276,50 @@ class Renderer:
             self.choice_rects.append(row_rect)
 
             if selected:
-                pygame.draw.rect(self.screen, HIGHLIGHT, row_rect, border_radius=6)
-                pygame.draw.rect(self.screen, PANEL_EDGE, row_rect, 2, border_radius=6)
+                ui.fill(HIGHLIGHT, row_rect)
+                ui.rect(PANEL_EDGE, row_rect, 2, radius=6)
 
             color = TEXT if enabled else (108, 104, 124)
-            marker = "▶" if selected else " "
-            label = f"{marker} {row + 1}. {choice.get('label', '')}"
-            self.screen.blit(pixel_text(label, 17, color, bold=selected),
-                             (row_rect.x + 8, row_rect.y + 6))
+            # a drawn cursor, not a glyph: the default font has no U+25B6 and
+            # rendered a tofu box instead
+            if selected:
+                ui.triangle(ACCENT, (
+                    (row_rect.x + 8, row_rect.y + 8),
+                    (row_rect.x + 8, row_rect.y + 18),
+                    (row_rect.x + 16, row_rect.y + 13),
+                ))
+            ui.blit(ui.text(f"{row + 1}. {choice.get('label', '')}", 18, color, bold=selected),
+                    (row_rect.x + 22, row_rect.y + 5))
 
             if not enabled and choice.get("reason"):
-                reason = pixel_text(str(choice["reason"]), 12, (128, 120, 116))
-                reason = reason.subsurface(pygame.Rect(
-                    0, 0, min(reason.get_width(), 300), reason.get_height())).copy()
-                self.screen.blit(reason, (row_rect.right - reason.get_width() - 8,
-                                          row_rect.y + 8))
+                reason = str(choice["reason"])
+                right_x = row_rect.right - 10
+                room = int((row_rect.right - row_rect.x) * 0.55)
+                while ui.measure(reason, 13) > room and len(reason) > 4:
+                    reason = reason[:-1]
+                ui.text_right(reason, 13, (140, 132, 128), right_x, row_rect.y + 7)
 
-        if view.scroll + 6 < len(view.choices):
-            more = pixel_text(f"▼ {len(view.choices) - view.scroll - 6} more", 13, MUTED)
-            self.screen.blit(more, (box.x + 176, list_y + 6 * 28 + 2))
+        remaining = len(view.choices) - view.scroll - 6
+        if remaining > 0:
+            ui.triangle(MUTED, (
+                (box.x + 176, list_y + 6 * 28 + 4),
+                (box.x + 186, list_y + 6 * 28 + 4),
+                (box.x + 181, list_y + 6 * 28 + 11),
+            ))
+            ui.blit(ui.text(f"{remaining} more", 14, MUTED), (box.x + 192, list_y + 6 * 28 + 2))
 
     # -------------------------------------------------------------- shop
     def draw_shop(self, view: ShopView) -> None:
+        ui = self.ui
         panel_w, panel_h = 620, 400
-        panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-        panel.fill(PANEL)
-        pygame.draw.rect(panel, PANEL_EDGE, panel.get_rect(), 3, border_radius=10)
         px = (self.width - panel_w) // 2
         py = (self.height - panel_h) // 2 - 40
-        self.screen.blit(panel, (px, py))
+        ui.panel((px, py, panel_w, panel_h), PANEL, PANEL_EDGE, width=3, radius=10)
 
-        title = pixel_text(f"{view.label}  —  Goods", 22, ACCENT, bold=True)
-        self.screen.blit(title, (px + 24, py + 20))
-        purse = pixel_text(f"{view.gold} gold", 18, GOLD)
-        self.screen.blit(purse, (px + panel_w - purse.get_width() - 24, py + 24))
+        ui.blit(ui.text(f"{view.label}  —  Goods", 23, ACCENT, bold=True), (px + 24, py + 18))
+        ui.text_right(f"{view.gold} gold", 19, GOLD, px + panel_w - 24, py + 22)
         if view.discount:
-            deal = pixel_text("favour: 25% off", 14, ACCENT)
-            self.screen.blit(deal, (px + panel_w - deal.get_width() - 24, py + 50))
+            ui.text_right("favour: 25% off", 15, ACCENT, px + panel_w - 24, py + 50)
 
         self.choice_rects = []
         for index, row in enumerate(view.rows):
@@ -293,129 +327,155 @@ class Renderer:
             rect = pygame.Rect(px + 20, y, panel_w - 40, 46)
             self.choice_rects.append(rect)
             if index == view.selected:
-                pygame.draw.rect(self.screen, HIGHLIGHT, rect, border_radius=8)
-                pygame.draw.rect(self.screen, PANEL_EDGE, rect, 2, border_radius=8)
+                ui.fill(HIGHLIGHT, rect)
+                ui.rect(PANEL_EDGE, rect, 2, radius=8)
 
             available = bool(row.get("available"))
             color = TEXT if available else (116, 112, 132)
-            self.screen.blit(pixel_text(str(row["name"]), 18, color, bold=index == view.selected),
-                             (rect.x + 14, rect.y + 6))
-            self.screen.blit(pixel_text(str(row["description"]), 13, MUTED), (rect.x + 14, rect.y + 26))
+            ui.blit(ui.text(str(row["name"]), 19, color, bold=index == view.selected),
+                    (rect.x + 14, rect.y + 5))
+            ui.blit(ui.text(str(row["description"]), 14, MUTED), (rect.x + 14, rect.y + 27))
 
-            price = str(row["price"]) + "g"
+            price = f"{row['price']}g"
             price_color = GOLD if available else (116, 112, 132)
-            surf = pixel_text(price, 18, price_color, bold=True)
-            self.screen.blit(surf, (rect.right - surf.get_width() - 16, rect.y + 12))
+            ui.text_right(price, 19, price_color, rect.right - 16, rect.y + 11, bold=True)
 
             if not row.get("in_stock"):
-                out = pixel_text("out of stock", 12, DANGER)
-                self.screen.blit(out, (rect.right - out.get_width() - 16, rect.y + 30))
+                ui.text_right("out of stock", 13, DANGER, rect.right - 16, rect.y + 31)
 
         if view.message:
-            msg = pixel_text(view.message, 15, ACCENT)
-            self.screen.blit(msg, (px + 24, py + panel_h - 54))
-        hint = pixel_text("↑/↓ choose    ENTER buy    ESC back", 14, MUTED)
-        self.screen.blit(hint, (px + 24, py + panel_h - 28))
+            ui.blit(ui.text(view.message, 16, ACCENT), (px + 24, py + panel_h - 58))
+        ui.blit(ui.text("UP / DOWN choose    ENTER buy    ESC back", 15, MUTED),
+                (px + 24, py + panel_h - 30))
 
     # ---------------------------------------------------- memory inspector
     def draw_memory_panel(self, panels: Dict[str, List[Dict[str, str]]],
                           reasons: Dict[str, List[str]], quest_hint: str) -> None:
-        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        overlay.fill((10, 9, 16, 226))
-        self.screen.blit(overlay, (0, 0))
+        """The panel the whole research claim is judged on, so it is made legible.
 
-        title = pixel_text("MEMORY INSPECTOR — what each NPC actually holds", 22, ACCENT, bold=True)
-        self.screen.blit(title, (40, 28))
-        sub = pixel_text("tier · status · importance · confidence   (ESC / J to close)", 14, MUTED)
-        self.screen.blit(sub, (40, 58))
+        Sizes were 11-13 px inside a frame that then got resampled: the reason tag
+        was truncated mid-sentence (``Arun accused the player of stealing Mira's
+        med…``) and the meta line was unreadable. Now the reason wraps over up to
+        three lines in full, summaries wrap instead of clipping at 34 characters,
+        and everything renders at window resolution.
+        """
+        ui = self.ui
+        ui.dim((10, 9, 16, 232))
+
+        left = ui.origin_x + 40
+        right = ui.origin_x + ui.span_w - 40
+        ui.blit(ui.text("MEMORY INSPECTOR — what each NPC actually holds", 24, ACCENT,
+                        bold=True), (left, ui.origin_y + 24))
+        ui.blit(ui.text("every record this NPC holds · tier · status · importance · confidence"
+                        "   (ESC / J to close)", 15, MUTED), (left, ui.origin_y + 56))
 
         columns = list(panels.keys())
-        col_w = (self.width - 80) // max(1, len(columns))
+        col_w = int((right - left) / max(1, len(columns)))
+
         for index, npc_id in enumerate(columns):
-            x = 40 + index * col_w
-            y = 96
-            self.screen.blit(pixel_text(npc_id.upper(), 18, TEXT, bold=True), (x, y))
-            y += 30
+            x = left + index * col_w
+            content_w = col_w - 36
+            y = ui.origin_y + 92
+            ui.blit(ui.text(npc_id.upper(), 20, TEXT, bold=True), (x, y))
+            y += 28
 
             reason_lines = reasons.get(npc_id, [])
             if reason_lines:
-                tag = pixel_text("cause: " + reason_lines[0], 12, WARN)
-                tag = tag.subsurface(pygame.Rect(
-                    0, 0, min(tag.get_width(), col_w - 20), tag.get_height())).copy()
-                self.screen.blit(tag, (x, y))
-            y += 24
+                for line in ui.wrap("cause: " + reason_lines[0], 15, content_w)[:3]:
+                    ui.blit(ui.text(line, 15, WARN), (x, y))
+                    y += 19
+            y += 6
 
-            for row in panels[npc_id][:9]:
+            # as many rows as the window can hold, so a fullscreen inspector
+            # shows the whole store instead of the first eight records
+            rows_that_fit = max(4, int((ui.origin_y + ui.span_h - 70 - y) / 30))
+            for row in panels[npc_id][:rows_that_fit]:
                 tier = str(row.get("tier", ""))
                 status = str(row.get("status", ""))
-                pygame.draw.rect(self.screen, TIER_COLORS.get(tier, MUTED), (x, y + 6, 6, 6))
-                pygame.draw.rect(self.screen, STATUS_COLORS.get(status, MUTED), (x + 12, y + 6, 6, 6))
-                summary = str(row.get("summary", ""))
-                if len(summary) > 34:
-                    summary = summary[:32] + "…"
-                self.screen.blit(pixel_text(summary, 13, TEXT), (x + 24, y))
-                meta = f"{tier[:4]}·{status[:5]}·{row.get('importance')}"
-                self.screen.blit(pixel_text(meta, 11, MUTED), (x + 24, y + 14))
-                y += 34
+                ui.square(TIER_COLORS.get(tier, MUTED), x, y + 5, 8)
+                ui.square(STATUS_COLORS.get(status, MUTED), x + 13, y + 5, 8)
 
-        hint = pixel_text("next: " + quest_hint, 15, ACCENT)
-        self.screen.blit(hint, (40, self.height - 52))
+                text_x = x + 28
+                summary_lines = ui.wrap(str(row.get("summary", "")), 15, content_w - 28)[:2]
+                for line in summary_lines:
+                    ui.blit(ui.text(line, 15, TEXT), (text_x, y))
+                    y += 18
+                meta = f"{tier[:4] or '—'} · {status} · imp {row.get('importance')}"
+                ui.blit(ui.text(meta, 13, MUTED), (text_x, y))
+                y += 30
+
+        ui.blit(ui.text("next: " + quest_hint, 16, ACCENT),
+                (left, ui.origin_y + ui.span_h - 46))
 
     # ---------------------------------------------------------- overlays
     def draw_day_overlay(self, day: int, entries: Sequence[str]) -> None:
-        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        overlay.fill((8, 8, 14, 210))
-        self.screen.blit(overlay, (0, 0))
+        ui = self.ui
+        ui.dim((8, 8, 14, 224))
 
-        title = pixel_text(f"DAY {day}", 40, GOLD, bold=True)
-        self.screen.blit(title, (self.width // 2 - title.get_width() // 2, 120))
+        centre = ui.origin_x + ui.span_w / 2
+        ui.text_center(f"DAY {day}", 44, GOLD, centre, ui.origin_y + 118, bold=True)
 
-        y = 210
+        y = ui.origin_y + 214
         for entry in list(entries)[:8]:
-            for line in wrap_text(entry, 18, self.width - 240)[:2]:
-                surf = pixel_text(line, 18, TEXT)
-                self.screen.blit(surf, (self.width // 2 - surf.get_width() // 2, y))
-                y += 26
+            for line in ui.wrap(entry, 19, ui.span_w - 240)[:2]:
+                ui.text_center(line, 19, TEXT, centre, y)
+                y += 27
             y += 6
 
         if not entries:
-            surf = pixel_text("A quiet night passes over the town.", 18, MUTED)
-            self.screen.blit(surf, (self.width // 2 - surf.get_width() // 2, y))
+            ui.text_center("A quiet night passes over the town.", 19, MUTED, centre, y)
 
-        hint = pixel_text("SPACE / ENTER to wake", 15, MUTED)
-        self.screen.blit(hint, (self.width // 2 - hint.get_width() // 2, self.height - 90))
+        ui.text_center("SPACE / ENTER to wake", 16, MUTED, centre,
+                       ui.origin_y + ui.span_h - 92)
 
     def draw_help(self) -> None:
-        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        overlay.fill((10, 9, 16, 232))
-        self.screen.blit(overlay, (0, 0))
+        ui = self.ui
+        ui.dim((10, 9, 16, 236))
 
-        title = pixel_text("HOW TO PLAY", 30, ACCENT, bold=True)
-        self.screen.blit(title, (60, 50))
+        left = ui.origin_x + 60
+        top = ui.origin_y + 44
+        ui.blit(ui.text("HOW TO PLAY", 32, ACCENT, bold=True), (left, top))
 
         lines = [
-            "WASD / ARROWS      walk around the town",
-            "E / SPACE / ENTER  talk to a nearby townsfolk",
-            "UP / DOWN          pick a reply in the dialogue box",
-            "1 – 9              jump straight to a reply",
-            "MOUSE              hover and click replies",
-            "N                  sleep and advance one day",
-            "J / TAB            memory inspector (tiers, status, causes)",
-            "F11                fullscreen (on / off)",
-            "F10                cycle window size (1x, 1.25x, 1.5x, 2x)",
-            "drag the window    the view scales to fit, letterboxed",
-            "F1                 this screen        ESC  close / back",
-            "",
-            "The town runs on the research core: every reply you get is",
-            "generated from that NPC's own memory store, and the orange tag in",
-            "the dialogue box names the memory the counterfactual verifier",
-            "certified as the cause of their decision.",
-            "",
-            "Mira will not trade with you while she believes you a thief.",
-            "Kael can tell you how a traveller proves their innocence.",
+            ("WASD / ARROWS", "walk around the town"),
+            ("E / SPACE / ENTER", "talk to a nearby townsfolk"),
+            ("UP / DOWN", "pick a reply in the dialogue box"),
+            ("1 – 9", "jump straight to a reply"),
+            ("MOUSE", "hover and click replies"),
+            ("N", "sleep and advance one day"),
+            ("J / TAB", "memory inspector (tiers, status, causes)"),
+            ("F11", "fullscreen (on / off)"),
+            ("F10", "cycle window size (1x, 1.25x, 1.5x, 2x)"),
+            ("drag the window", "the view scales to fit, and the text stays sharp"),
+            ("F1", "this screen        ESC  close / back"),
         ]
-        y = 110
-        for line in lines:
-            color = TEXT if line else MUTED
-            self.screen.blit(pixel_text(line, 17, color), (60, y))
+        y = top + 64
+        for key, description in lines:
+            ui.blit(ui.text(key, 18, TEXT, bold=True), (left, y))
+            ui.blit(ui.text(description, 18, MUTED), (left + 240, y))
             y += 28
+
+        y += 12
+        for line in [
+            "The town runs on the research core: every reply you get is generated from",
+            "that NPC's own memory store, and the orange tag in the dialogue box names",
+            "the memory the counterfactual verifier certified as the cause of their",
+            "decision. J opens the same evidence layer for every townsfolk at once.",
+        ]:
+            ui.blit(ui.text(line, 17, MUTED), (left, y))
+            y += 24
+
+        ui.blit(ui.text("Mira will not trade with you while she believes you a thief.", 17, ACCENT),
+                (left, y + 10))
+
+    def draw_toast(self, text: str) -> None:
+        """A short system message near the top centre, crisp like the rest."""
+        ui = self.ui
+        lines = ui.wrap(text, 17, 620)[:3]
+        box_h = 18 + len(lines) * 24
+        box_w = max(ui.measure(line, 17) for line in lines) + 32
+        box_x = ui.origin_x + (ui.span_w - box_w) / 2
+        ui.panel((box_x, 60, box_w, box_h), (20, 18, 30, 226), (110, 104, 140),
+                 width=2, radius=8)
+        for index, line in enumerate(lines):
+            ui.blit(ui.text(line, 17, (240, 236, 250)), (box_x + 16, 68 + index * 24))

@@ -136,8 +136,13 @@ class Display:
         )
 
     # ----------------------------------------------------------- presenting
-    def present(self) -> None:
-        """Scale the logical frame into the window and flip."""
+    def present(self, flip: bool = True) -> None:
+        """Scale the logical frame into the window.
+
+        ``flip=False`` leaves the window unpublished so the caller can draw the
+        native-resolution UI pass on top before showing the frame; see
+        ``game/ui.py`` for why the UI is not part of the scaled frame.
+        """
         self.window.fill((0, 0, 0))                       # letterbox bars
         if self.dest_size == self.logical_size:
             scaled: Optional[pygame.Surface] = self.logical
@@ -148,4 +153,5 @@ class Display:
         else:
             scaled = pygame.transform.smoothscale(self.logical, self.dest_size)
         self.window.blit(scaled, (int(self.offset_x), int(self.offset_y)))
-        pygame.display.flip()
+        if flip:
+            pygame.display.flip()
