@@ -2,22 +2,20 @@
 
 Why this module exists
 ---------------------
-docs/EVALUATION.md limitation 4: "One seed. Invariants use build_scenarios(60)
-and the bootstrap uses seed 20260920; both are fixed so results are reproducible,
-which also means the scenarios are a single sample. --invariants 200 and
---invariants 1000 widen it; the numbers above come from 60."
+docs/EVALUATION.md limitation 4: "One seed ... the scenarios are a single sample."
+This module runs every instrument across many seeds and reports the distribution
+plus per-seed win/tie/loss counts against the full architecture.
 
-A single seed gives a point estimate with no sense of run-to-run variation. This
-module runs the invariant suite and the multi-role family suite across many
-seeds and reports the distribution -- mean, standard deviation, min, max -- plus
-a bootstrap CI over the seeds themselves. Two questions it answers:
+Instruments combined per seed
+-----------------------------
+* the invariant suite (harness.build_scenarios)
+* the multi-role family suite (families.build_family_scenarios)
+* the new scenario families (scenario_families.run_decision_families)
 
-1. Is the reported pass rate stable, or did the chosen seed happen to be lucky?
-2. Does the ranking between the full architecture and each baseline survive
-   reseeding, or does it flip on some seeds? (A ranking that flips is not a
-   ranking.)
-
-Nothing here changes the instruments; it re-runs them on independent samples.
+Per-seed results are preserved so an anomalous seed can be inspected; they are
+never averaged away. The aggregation reports mean / stdev / min / max / perfect
+counts, and counts, for every baseline, how many seeds it beat, tied, or lost to
+the full architecture.
 """
 
 from __future__ import annotations
@@ -30,9 +28,11 @@ from npc_memory_project.evaluation.families import (
     build_family_scenarios, evaluate_families,
 )
 from npc_memory_project.evaluation.harness import build_scenarios, evaluate
+from npc_memory_project.evaluation.scenario_families import run_decision_families
 from npc_memory_project.memory.manager import HierarchicalMemoryManager
 
 DEFAULT_SEEDS: Sequence[int] = tuple(20260920 + i for i in range(20))
+FULL = "SHM (this architecture)"
 
 
 @dataclass
@@ -66,17 +66,17 @@ def run_multiseed(
     n_per_role: int = 12,
     top_k: int = 5,
     include_baselines: bool = True,
+    include_families_v06: bool = True,
 ) -> Dict[str, object]:
-    """Run the invariant and family suites across seeds; aggregate per method."""
+    """Run every suite across seeds; aggregate per method and per suite."""
     seeds = list(seeds or DEFAULT_SEEDS)
-    methods: List[tuple] = [("SHM (this architecture)", HierarchicalMemoryManager())]
+    methods: List[tuple] = [(FULL, HierarchicalMemoryManager())]
     if include_baselines:
         methods += [(policy.name, policy) for policy in default_suite()]
 
     samples: List[SeedSample] = []
 
     for seed in seeds:
-        # both suites use the seed; family seed derived so the two differ
         inv_scenarios = build_scenarios(n_scenarios, seed=seed)
         fam_scenarios = build_family_scenarios(n_per_role, seed=seed + 1)
         for name, retrieval in methods:
@@ -86,6 +86,10 @@ def run_multiseed(
             fam = evaluate_families(fam_scenarios, retrieval=retrieval, top_k=top_k)
             samples.append(SeedSample(seed, "families", name,
                                       fam["passed"], fam["checks"]))
+            if include_families_v06:
+                v6 = run_decision_families(retrieval=retrieval, seed=seed, top_k=top_k)
+                samples.append(SeedSample(seed, "scenario_families", name,
+                                          v6["passed"], v6["cases"]))
 
     return _aggregate(samples, seeds)
 
@@ -107,19 +111,19 @@ def _aggregate(samples: Sequence[SeedSample], seeds: Sequence[int]) -> Dict[str,
                 "stdev_rate": _stdev(rates),
                 "min_rate": rates_sorted[0] if rates else 0.0,
                 "max_rate": rates_sorted[-1] if rates else 0.0,
-                # fraction of seeds on which this method was perfect
                 "perfect_seeds": sum(1 for r in rates if r >= 1.0),
+                # per-seed detail preserved so anomalous seeds are inspectable
+                "per_seed": {r.seed: r.rate for r in rows},
             }
         summary[suite] = suite_summary
 
-    # pairwise: on how many seeds does SHM strictly beat / tie / lose to each method
     comparisons: Dict[str, Dict[str, object]] = {}
     for suite, methods in by_suite_method.items():
-        full = methods.get("SHM (this architecture)", [])
+        full = methods.get(FULL, [])
         full_by_seed = {s.seed: s.rate for s in full}
         cmp: Dict[str, object] = {}
         for method, rows in methods.items():
-            if method == "SHM (this architecture)":
+            if method == FULL:
                 continue
             wins = ties = losses = 0
             for r in rows:

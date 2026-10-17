@@ -333,7 +333,118 @@ ranking sections 1 and 7 report, now shown to survive reseeding rather than bein
 a lucky draw. A ranking that flipped on some seed would not be a ranking; none
 does. The intervals in section 1 remain the right way to report *magnitude*.
 
-## 10. Reproducing
+## 10. Scenario families beyond theft (v0.6)
+
+Sections 7 and 9 still revolve around accusation/exoneration. `evaluation/
+scenario_families.py` adds five families exercising different memory phenomena.
+Two kinds of instrument are kept separate on purpose.
+
+**Decision families** (through retrieval + the engine, so they can run against
+every policy):
+
+| family | what it tests | invariant |
+|---|---|---|
+| A reciprocity | repeated fair trade over days | stays warm, never punitive |
+| B betrayal | a severe recent theft against old positives | suppresses warm service |
+| C obligation | an unresolved promise under long noise | stays civil |
+
+**Belief families** (properties of the updater; retrieval-independent):
+
+| family | invariant | result |
+|---|---|---|
+| D rumour provenance | an echo chain must not raise confidence | **PASS** (0.700 unchanged) |
+| D rumour provenance | an independent source must raise confidence | **PASS** (0.700 → 0.715) |
+| E conflicting witnesses | the higher-confidence claim prevails | **PASS** (strong active, weak disputed) |
+
+```bash
+python -m npc_memory_project.evaluation.report --newfamilies
+```
+
+**Honest reading.** The belief families pass and are genuine positives: repeated
+transmission of the same rumour is correctly *not* treated as independent
+corroboration. The decision families A–C pass **4/4 for every policy at default
+retrieval** — they do **not** discriminate. The decisive records are important
+enough to survive top-k without any architecture help. This is a negative result
+and is reported as one; it motivates section 11, where retrieval pressure is
+turned into a controlled variable.
+
+## 11. Consolidation pressure curve (v0.6)
+
+Section 8 proved existence at one hand-chosen point. `evaluation/pressure.py`
+sweeps the variables the question depends on: competing memories (0–500), age of
+the decisive evidence, its importance (weak/medium/strong), and top-k, against
+five policies.
+
+```bash
+python -m npc_memory_project.evaluation.report --pressure
+python -m npc_memory_project.evaluation.report --pressure --csv pressure.csv
+```
+
+Decisive-feature coverage, weak importance, age 50 d, top_k = 5:
+
+| policy | 0 | 5 | 10 | 20 | 50 | 100 | 200 | 500 |
+|---|---|---|---|---|---|---|---|---|
+| recency-only | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
+| importance-only | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
+| status-aware flat | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
+| hierarchical, no consolidation | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
+| **SHM (full + consolidation)** | 100% | **100%** | **100%** | **100%** | **100%** | **100%** | **100%** | **100%** |
+
+The same run at **strong** importance changes one row: *importance-only* also
+holds 100% at every level, because a strong record's own importance keeps it in
+the top-k. Two findings follow, and they are the paper's real claim about
+consolidation:
+
+1. **Consolidation's benefit is conditional on decisive-evidence importance.**
+   When the decisive fact is *weak* (a low-impact exoneration), only the
+   consolidated semantic record survives retrieval pressure. When it is *strong*,
+   plain importance ranking already preserves it and consolidation adds nothing.
+2. **The drop is a step, not a curve.** Coverage falls between 0 and 5 competing
+   memories because top-k=5 means a handful of recent records already fills
+   retrieval. This is a property of small-k retrieval, stated so it is not
+   over-generalised.
+
+The module also measures retrieval latency, reachable count, and footprint. One
+cost is visible and reported: SHM retrieves *more* text than the flat policies
+(≈193 vs ≈104 chars in the no-noise store) because the consolidated record is an
+extra retrieved item. Consolidation buys coverage at a small context cost.
+
+## 12. Explanation faithfulness (v0.6)
+
+`evaluation/faithfulness.py` measures the counterfactual verifier:
+
+```bash
+python -m npc_memory_project.evaluation.report --explanations
+```
+
+| metric | value |
+|---|---|
+| causal-memory precision (action-changing / flagged) | 50.0% |
+| causal-memory precision (any score delta / flagged) | 100.0% |
+| causal-memory coverage (decisive fact identified) | 100.0% |
+| decisive record retrieved | 100.0% |
+| explanation stability (conditional on retrieval) | 100.0% |
+| derived-memory lineage correctness | PASS |
+
+**Honest reading.** The 50% action-changing precision is not a failure: each case
+flags two factors — the exoneration (which flips the action) and the derived
+semantic summary (which moves the score without flipping). One of two flags
+changes the action; both change the outcome. Coverage and stability are perfect
+*once the decisive record is retrieved*, which the earlier sections show is the
+real bottleneck.
+
+**Scope statement (must accompany any citation):** these are
+counterfactual-sensitivity measures of memory contribution under a *deletion*
+intervention ("the NPC forgot m"). They are not formal causal-effect estimates,
+and trust, personality and world state are never ablated. See the scope note in
+`explainability/counterfactual.py`.
+
+A metric bug was fixed during this work and is reported rather than hidden: the
+first stability measure compared decisive-record IDs that were regenerated per
+noise level, so it read 0% spuriously. It now asks whether the decisive fact was
+identified at each level, which is the question the metric intends.
+
+## 13. Reproducing
 
 ```bash
 pip install -e ".[dev]"
@@ -346,8 +457,40 @@ python -m npc_memory_project.evaluation.report --invariants 200
 python -m npc_memory_project.evaluation.report --families 12     # section 7
 python -m npc_memory_project.evaluation.report --consolidation   # section 8
 python -m npc_memory_project.evaluation.report --multiseed 20    # section 9
-pytest tests/test_evaluation.py tests/test_memory_index.py tests/test_research_v05.py -q
+python -m npc_memory_project.evaluation.report --newfamilies     # section 10
+python -m npc_memory_project.evaluation.report --pressure        # section 11
+python -m npc_memory_project.evaluation.report --explanations    # section 12
+python -m npc_memory_project.evaluation.report --figures figs/   # figure CSVs
+pytest tests/test_evaluation.py tests/test_memory_index.py \
+       tests/test_research_v05.py tests/test_research_v06.py -q
 ```
 
 Numbers above were produced on the development machine on 2026-09-20; latencies
 are machine-dependent, accuracies are not.
+
+## 14. Claim status (what the evidence supports)
+
+**Demonstrated** (reproducible from code, holds across seeds):
+* Belief-status filtering is load-bearing; removing it degrades both instruments.
+* A recency-only stream forgets decisive evidence and can still look accurate
+  while retrieving nothing relevant (sections 6.2, 11).
+* Knowledge retention: an exoneration verified on day 3 still governs day 120.
+* Echo chains do not inflate confidence; only independent sources corroborate.
+* The higher-confidence claim prevails in a conflict.
+* Under retrieval pressure with *weak* decisive evidence, consolidation preserves
+  the decisive fact where every other policy loses it.
+
+**Implemented but not shown to help decisions** (present, no measured benefit):
+* The Working/Episodic/Semantic/Archive tier hierarchy is decision-redundant with
+  belief status (section 6.3); it earns its place only as a cost mechanism (6.4).
+* The Semantic tier is redundant *outside* the pressure regime of section 11.
+
+**Hypothesised** (expected to help, not yet measured):
+* Multi-role behaviour generalises beyond the five shipped roles.
+* Consolidation reduces long-run context cost in a real game loop.
+
+**Limitation** (evidence insufficient):
+* No human ground truth (section on the protocol; none run).
+* Decision families A–C do not discriminate at default retrieval (section 10).
+* Footprint is a character proxy, not a tokenizer count.
+* Latency measured on one machine; the *shape* of the curve is the finding.

@@ -230,10 +230,13 @@ seconds; `docs/EVALUATION.md` holds the current numbers with their limitations.
 `python -m npc_memory_project.evaluation.benchmark` reports the four measurements
 below.
 
-v0.5 adds three experiments that extend the instrument without overturning the
-negative results below: a multi-role family suite (`--families`), a
-consolidation-necessity study (`--consolidation`), and multi-seed stability
-(`--multiseed`). See `docs/EVALUATION.md` sections 6–8.
+v0.6 adds four experiments that sharpen the picture: distinct scenario families
+(`--newfamilies`), a consolidation pressure curve (`--pressure`),
+explanation-faithfulness metrics (`--explanations`), and figure-data export
+(`--figures`). Its headline finding: consolidation is load-bearing only when the
+decisive evidence is weak enough to be crowded out of top-k — strong evidence is
+already safe under plain importance ranking. See `docs/EVALUATION.md` sections
+10–12 and the claim-status table in section 14.
 
 Headline comparison against five retrieval baselines, on a 21-case author-labelled
 set and the 63-check invariant suite:
@@ -355,7 +358,7 @@ src/npc_memory_project/
   web/             HTTP server + canvas simulator and XAI inspector
   game/            playable pygame town (pixel-art, dialogue, shops)
 tools/             offline human-annotation UI (annotate.html)
-tests/             126 tests
+tests/             141 tests
 docs/              architecture notes, evaluation results, human-eval protocol, IEEE paper draft
 ```
 
