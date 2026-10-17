@@ -1,0 +1,2113 @@
+{
+  "schema": "shm-npc/blind-cases/1",
+  "instructions": "Judge only from the state shown. Select every action a reasonable NPC could defensibly take, choose one preferred action, and cite the decisive memory ids. Only actions in this case's action_menu may be chosen. No expected answer is supplied and none exists in this file.",
+  "action_family_taxonomy": {
+    "trade": "warm",
+    "offer_discount": "warm",
+    "apologise": "warm",
+    "help_player": "warm",
+    "refuse_trade": "punitive",
+    "warn_player": "punitive",
+    "call_guard": "punitive",
+    "arrest_player": "punitive",
+    "question_player": "informative",
+    "report_findings": "informative",
+    "talk": "neutral",
+    "ignore": "neutral",
+    "deny": "neutral",
+    "flee": "neutral",
+    "bribe": "neutral",
+    "spread_rumour": "neutral",
+    "confess": "neutral"
+  },
+  "cases": [
+    {
+      "case_id": "case-001",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 20.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": false,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "h1",
+          "summary": "The player returned her lost satchel.",
+          "event_type": "help_player",
+          "game_day": 2,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.5,
+          "confidence": 0.9,
+          "source": "direct",
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "case_id": "case-002",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 5.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 60,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "noise0",
+          "summary": "A passing remark in the square (0).",
+          "event_type": "smalltalk",
+          "game_day": 60,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise1",
+          "summary": "A passing remark in the square (1).",
+          "event_type": "smalltalk",
+          "game_day": 59,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise2",
+          "summary": "A passing remark in the square (2).",
+          "event_type": "smalltalk",
+          "game_day": 58,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise3",
+          "summary": "A passing remark in the square (3).",
+          "event_type": "smalltalk",
+          "game_day": 57,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise4",
+          "summary": "A passing remark in the square (4).",
+          "event_type": "smalltalk",
+          "game_day": 56,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise5",
+          "summary": "A passing remark in the square (5).",
+          "event_type": "smalltalk",
+          "game_day": 60,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise6",
+          "summary": "A passing remark in the square (6).",
+          "event_type": "smalltalk",
+          "game_day": 59,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise7",
+          "summary": "A passing remark in the square (7).",
+          "event_type": "smalltalk",
+          "game_day": 58,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise8",
+          "summary": "A passing remark in the square (8).",
+          "event_type": "smalltalk",
+          "game_day": 57,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise9",
+          "summary": "A passing remark in the square (9).",
+          "event_type": "smalltalk",
+          "game_day": 56,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise10",
+          "summary": "A passing remark in the square (10).",
+          "event_type": "smalltalk",
+          "game_day": 60,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise11",
+          "summary": "A passing remark in the square (11).",
+          "event_type": "smalltalk",
+          "game_day": 59,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise12",
+          "summary": "A passing remark in the square (12).",
+          "event_type": "smalltalk",
+          "game_day": 58,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise13",
+          "summary": "A passing remark in the square (13).",
+          "event_type": "smalltalk",
+          "game_day": 57,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise14",
+          "summary": "A passing remark in the square (14).",
+          "event_type": "smalltalk",
+          "game_day": 56,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise15",
+          "summary": "A passing remark in the square (15).",
+          "event_type": "smalltalk",
+          "game_day": 60,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise16",
+          "summary": "A passing remark in the square (16).",
+          "event_type": "smalltalk",
+          "game_day": 59,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise17",
+          "summary": "A passing remark in the square (17).",
+          "event_type": "smalltalk",
+          "game_day": 58,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise18",
+          "summary": "A passing remark in the square (18).",
+          "event_type": "smalltalk",
+          "game_day": 57,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise19",
+          "summary": "A passing remark in the square (19).",
+          "event_type": "smalltalk",
+          "game_day": 56,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise20",
+          "summary": "A passing remark in the square (20).",
+          "event_type": "smalltalk",
+          "game_day": 60,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise21",
+          "summary": "A passing remark in the square (21).",
+          "event_type": "smalltalk",
+          "game_day": 59,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise22",
+          "summary": "A passing remark in the square (22).",
+          "event_type": "smalltalk",
+          "game_day": 58,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise23",
+          "summary": "A passing remark in the square (23).",
+          "event_type": "smalltalk",
+          "game_day": 57,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise24",
+          "summary": "A passing remark in the square (24).",
+          "event_type": "smalltalk",
+          "game_day": 56,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise25",
+          "summary": "A passing remark in the square (25).",
+          "event_type": "smalltalk",
+          "game_day": 60,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise26",
+          "summary": "A passing remark in the square (26).",
+          "event_type": "smalltalk",
+          "game_day": 59,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise27",
+          "summary": "A passing remark in the square (27).",
+          "event_type": "smalltalk",
+          "game_day": 58,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise28",
+          "summary": "A passing remark in the square (28).",
+          "event_type": "smalltalk",
+          "game_day": 57,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise29",
+          "summary": "A passing remark in the square (29).",
+          "event_type": "smalltalk",
+          "game_day": 56,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "e1",
+          "summary": "The guard proved that Rohan, not the player, stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 5,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-003",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 10.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "superseded",
+          "importance": 0.86,
+          "confidence": 0.6,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "e1",
+          "summary": "The guard proved that Rohan, not the player, stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 3,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "s1",
+          "summary": "The player was falsely accused of stealing medicine.",
+          "event_type": "belief_player_falsely_accused",
+          "game_day": 3,
+          "tier": "semantic",
+          "status": "active",
+          "importance": 1.0,
+          "confidence": 0.95,
+          "source": "belief_revision",
+          "metadata": {
+            "claim": "player_falsely_accused"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-004",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 20.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 0
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "h1",
+          "summary": "The player returned her lost satchel.",
+          "event_type": "help_player",
+          "game_day": 2,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.5,
+          "confidence": 0.9,
+          "source": "direct",
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "case_id": "case-005",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 0.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 12,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "r1",
+          "summary": "A passer-by repeated that the player stole medicine.",
+          "event_type": "rumour_theft_accusation",
+          "game_day": 2,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.5,
+          "confidence": 0.4,
+          "source": "hearsay",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "e1",
+          "summary": "The guard proved Rohan stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 11,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-006",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": -30.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.6,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-007",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": -10.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.6,
+          "source": "arun",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "a2",
+          "summary": "A second vendor also reported the theft.",
+          "event_type": "theft_accusation",
+          "game_day": 2,
+          "tier": "episodic",
+          "status": "corroborated",
+          "importance": 0.8,
+          "confidence": 0.62,
+          "source": "vendor_x",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-008",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 0.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 6,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "noise0",
+          "summary": "A passing remark in the square (0).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise1",
+          "summary": "A passing remark in the square (1).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise2",
+          "summary": "A passing remark in the square (2).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise3",
+          "summary": "A passing remark in the square (3).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise4",
+          "summary": "A passing remark in the square (4).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise5",
+          "summary": "A passing remark in the square (5).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise6",
+          "summary": "A passing remark in the square (6).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise7",
+          "summary": "A passing remark in the square (7).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise8",
+          "summary": "A passing remark in the square (8).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise9",
+          "summary": "A passing remark in the square (9).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise10",
+          "summary": "A passing remark in the square (10).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise11",
+          "summary": "A passing remark in the square (11).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise12",
+          "summary": "A passing remark in the square (12).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise13",
+          "summary": "A passing remark in the square (13).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise14",
+          "summary": "A passing remark in the square (14).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise15",
+          "summary": "A passing remark in the square (15).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise16",
+          "summary": "A passing remark in the square (16).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise17",
+          "summary": "A passing remark in the square (17).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "e1",
+          "summary": "The guard proved that Rohan, not the player, stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 3,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-009",
+      "npc": {
+        "npc_id": "kael",
+        "role": "guard",
+        "trust": -20.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.8,
+          "aggressive": 0.9
+        },
+        "inventory": {
+          "sword": 1
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {
+          "permit_arrest": "true"
+        }
+      },
+      "action_menu": [
+        "warn_player",
+        "question_player",
+        "arrest_player",
+        "apologise",
+        "ignore",
+        "report_findings"
+      ],
+      "memories": [
+        {
+          "event_id": "t1",
+          "summary": "Player stole medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.95,
+          "confidence": 0.99,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-010",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 0.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "disputed",
+          "importance": 0.86,
+          "confidence": 0.8,
+          "source": "arun",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "e1",
+          "summary": "Rohan insists he saw the player take it.",
+          "event_type": "theft_accusation",
+          "game_day": 2,
+          "tier": "episodic",
+          "status": "disputed",
+          "importance": 0.7,
+          "confidence": 0.8,
+          "source": "rohan",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-011",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": -5.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.6,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "h1",
+          "summary": "A traveller said Rohan was seen with the jar.",
+          "event_type": "rumour_innocence_verified",
+          "game_day": 3,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.45,
+          "confidence": 0.35,
+          "source": "hearsay",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-012",
+      "npc": {
+        "npc_id": "rohan",
+        "role": "suspect",
+        "trust": -20.0,
+        "personality": {
+          "remorse": 0.7,
+          "cautious": 0.6
+        },
+        "inventory": {
+          "stolen_medicine": 1
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "alley",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {
+          "cornered": "true"
+        }
+      },
+      "action_menu": [
+        "talk",
+        "confess",
+        "deny",
+        "bribe"
+      ],
+      "memories": [
+        {
+          "event_id": "c1",
+          "summary": "The guard found the jar in my room.",
+          "event_type": "theft_accusation",
+          "game_day": 3,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.9,
+          "confidence": 0.95,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-013",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 5.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 8,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "noise0",
+          "summary": "A passing remark in the square (0).",
+          "event_type": "smalltalk",
+          "game_day": 8,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise1",
+          "summary": "A passing remark in the square (1).",
+          "event_type": "smalltalk",
+          "game_day": 7,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise2",
+          "summary": "A passing remark in the square (2).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise3",
+          "summary": "A passing remark in the square (3).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise4",
+          "summary": "A passing remark in the square (4).",
+          "event_type": "smalltalk",
+          "game_day": 8,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise5",
+          "summary": "A passing remark in the square (5).",
+          "event_type": "smalltalk",
+          "game_day": 7,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise6",
+          "summary": "A passing remark in the square (6).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise7",
+          "summary": "A passing remark in the square (7).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise8",
+          "summary": "A passing remark in the square (8).",
+          "event_type": "smalltalk",
+          "game_day": 8,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise9",
+          "summary": "A passing remark in the square (9).",
+          "event_type": "smalltalk",
+          "game_day": 7,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "e1",
+          "summary": "The guard proved that Rohan stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 3,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "medicine_theft"
+          }
+        },
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "superseded",
+          "importance": 0.86,
+          "confidence": 0.6,
+          "source": "arun",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "medicine_theft"
+          }
+        },
+        {
+          "event_id": "c1",
+          "summary": "The player overpaid for a bandage and left.",
+          "event_type": "trade",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.35,
+          "confidence": 0.9,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_generous",
+            "conflict_key": "ledger"
+          }
+        },
+        {
+          "event_id": "c2",
+          "summary": "Arun claims the player short-changed him.",
+          "event_type": "theft_accusation",
+          "game_day": 5,
+          "tier": "working",
+          "status": "disputed",
+          "importance": 0.4,
+          "confidence": 0.4,
+          "source": "hearsay_arun",
+          "metadata": {
+            "claim": "player_shortchanged",
+            "conflict_key": "ledger"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-014",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 15.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "r1",
+          "summary": "Player is established as a reliable and trusted partner.",
+          "event_type": "semantic_reputation",
+          "game_day": 4,
+          "tier": "semantic",
+          "status": "active",
+          "importance": 0.82,
+          "confidence": 0.95,
+          "source": "consolidation",
+          "metadata": {
+            "target_actor": "player"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-015",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": -10.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 6,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "noise0",
+          "summary": "A passing remark in the square (0).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise1",
+          "summary": "A passing remark in the square (1).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise2",
+          "summary": "A passing remark in the square (2).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise3",
+          "summary": "A passing remark in the square (3).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise4",
+          "summary": "A passing remark in the square (4).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise5",
+          "summary": "A passing remark in the square (5).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise6",
+          "summary": "A passing remark in the square (6).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise7",
+          "summary": "A passing remark in the square (7).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise8",
+          "summary": "A passing remark in the square (8).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise9",
+          "summary": "A passing remark in the square (9).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise10",
+          "summary": "A passing remark in the square (10).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise11",
+          "summary": "A passing remark in the square (11).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise12",
+          "summary": "A passing remark in the square (12).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise13",
+          "summary": "A passing remark in the square (13).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise14",
+          "summary": "A passing remark in the square (14).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise15",
+          "summary": "A passing remark in the square (15).",
+          "event_type": "smalltalk",
+          "game_day": 6,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise16",
+          "summary": "A passing remark in the square (16).",
+          "event_type": "smalltalk",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "noise17",
+          "summary": "A passing remark in the square (17).",
+          "event_type": "smalltalk",
+          "game_day": 4,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.08,
+          "confidence": 0.5,
+          "source": "ambient",
+          "metadata": {}
+        },
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 2,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.6,
+          "source": "arun",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-016",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 5.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "e1",
+          "summary": "The guard proved Rohan stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 3,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "b1",
+          "summary": "The player broke a shelf during the market rush.",
+          "event_type": "help_player",
+          "game_day": 2,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.3,
+          "confidence": 0.8,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_clumsy",
+            "conflict_key": "shelf"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-017",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 0.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "s1",
+          "summary": "The player was falsely accused of stealing medicine.",
+          "event_type": "belief_player_falsely_accused",
+          "game_day": 3,
+          "tier": "semantic",
+          "status": "active",
+          "importance": 1.0,
+          "confidence": 0.95,
+          "source": "belief_revision",
+          "metadata": {
+            "claim": "player_falsely_accused"
+          }
+        },
+        {
+          "event_id": "d1",
+          "summary": "A drunkard claimed the player was seen near the shelf.",
+          "event_type": "rumour_theft_accusation",
+          "game_day": 3,
+          "tier": "working",
+          "status": "disputed",
+          "importance": 0.5,
+          "confidence": 0.3,
+          "source": "hearsay_drunkard",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-018",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 10.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 30,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": [
+        {
+          "event_id": "a1",
+          "summary": "Arun accused the player of stealing medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "archive",
+          "status": "superseded",
+          "importance": 0.86,
+          "confidence": 0.6,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        },
+        {
+          "event_id": "e1",
+          "summary": "The guard proved Rohan stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 3,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.86,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "claim": "rohan_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-019",
+      "npc": {
+        "npc_id": "arun",
+        "role": "vendor",
+        "trust": -30.0,
+        "personality": {
+          "cautious": 0.4
+        },
+        "inventory": {
+          "apple": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "market",
+        "player_has_money": true,
+        "player_wanted": true,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "spread_rumour",
+        "warn_player",
+        "talk",
+        "ignore"
+      ],
+      "memories": [
+        {
+          "event_id": "t1",
+          "summary": "Player stole from the stalls.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.9,
+          "confidence": 0.95,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "case-020",
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 0.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 5,
+          "bandage": 10
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "memories": []
+    },
+    {
+      "case_id": "case-021",
+      "npc": {
+        "npc_id": "kael",
+        "role": "guard",
+        "trust": -20.0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.8,
+          "aggressive": 0.9
+        },
+        "inventory": {
+          "sword": 1
+        },
+        "hostile": false
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "action_menu": [
+        "warn_player",
+        "question_player",
+        "apologise",
+        "ignore",
+        "report_findings"
+      ],
+      "memories": [
+        {
+          "event_id": "t1",
+          "summary": "Player stole medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.95,
+          "confidence": 0.99,
+          "source": "direct",
+          "metadata": {
+            "claim": "player_stole",
+            "conflict_key": "theft"
+          }
+        }
+      ]
+    }
+  ]
+}

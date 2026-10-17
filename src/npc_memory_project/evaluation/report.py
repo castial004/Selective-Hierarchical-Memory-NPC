@@ -662,6 +662,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         help="reciprocity/betrayal/obligation/provenance/witness families")
     parser.add_argument("--figures", type=Path, metavar="DIR",
                         help="export raw figure data (CSV) into DIR for plotting")
+    parser.add_argument("--export-blind", type=Path, metavar="PATH",
+                        help="write a blind case file (no labels/methods/scores) "
+                             "for independent annotation")
     parser.add_argument("--csv", type=Path, metavar="PATH",
                         help="write the pressure-curve points as CSV")
 
@@ -761,6 +764,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.figures is not None:
         export_figure_data(args.figures)
+        return 0
+
+    if args.export_blind is not None:
+        from npc_memory_project.evaluation.blind_export import (
+            audit_blind_payload, export_blind_cases,
+        )
+        payload = export_blind_cases(args.export_blind)
+        leaks = audit_blind_payload(payload)
+        if leaks:
+            print("ABORT: blind payload failed its own audit:")
+            for leak in leaks:
+                print("  -", leak)
+            return 1
+        print(f"wrote {len(payload['cases'])} blind cases to {args.export_blind}")
+        print("  audit: 0 leaks (no labels, methods, scores, or answer-revealing ids)")
+        print("  next: hand to independent annotators; do not add labels here")
         return 0
 
     if args.invariants:
