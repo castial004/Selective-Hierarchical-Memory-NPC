@@ -99,6 +99,54 @@ Whenever a human-derived number is published, state:
 4. N and a Wilson interval, never a bare percentage;
 5. the exact command and the committed `labels.json` SHA.
 
+## Annotation tooling (v0.5)
+
+The protocol above used to be prose plus export/score commands. v0.5 adds a
+runnable, offline annotation tool and a merge step so the whole pipeline is
+executable once real raters are available:
+
+1. **Export the blank instrument**
+
+   ```bash
+   python -m npc_memory_project.evaluation.report --export-labels labels.json
+   ```
+
+2. **Each rater annotates independently.** Open `tools/annotate.html` in any
+   browser (no server, no network — it is a single static file). Load
+   `labels.json`, enter a rater ID, and for each case select every plausible
+   action from the role's menu and write a one-line rationale. The tool shows
+   every memory with its tier and status, exactly as §1 of this protocol
+   requires. Export produces `labels_<rater>.json`.
+
+   The tool never shows method names or the author's labels, so the study is
+   blind by construction (a test asserts no method name appears in it).
+
+3. **Merge rater files**
+
+   ```bash
+   python -m npc_memory_project.evaluation.report --merge-labels \
+       labels.json labels_rater-a.json labels_rater-b.json
+   ```
+
+   The merge only propagates **unanimous single-family** agreement into
+   `adjudicated_family`. Cases where raters disagreed — or agreed on a
+   multi-family set — are left `null` and listed for manual adjudication. The
+   merge never invents a label.
+
+4. **Adjudicate, then score.** Resolve the listed cases by hand (or drop them and
+   report the count), then:
+
+   ```bash
+   python -m npc_memory_project.evaluation.report --labels labels.json
+   ```
+
+   The scorer refuses to run until every case has an `adjudicated_family` and
+   reports the labels file's SHA-256, as §5 requires.
+
+**Status is still PROTOCOL ONLY.** The tooling is built and tested, but no
+human-labelled file has been produced or committed. Until one is, no number here
+is human ground truth.
+
 ## Automation available now
 
 | Command | Purpose |
@@ -106,6 +154,8 @@ Whenever a human-derived number is published, state:
 | `python -m npc_memory_project.evaluation.report --export-labels labels.json` | full state per case, ready for annotation |
 | `python -m npc_memory_project.evaluation.report --labels labels.json` | score against adjudicated labels, with κ and CIs (refuses a file with nothing adjudicated) |
 | `python -m npc_memory_project.evaluation.report --preference` | shuffle-blinded method outputs for §4 |
+| `tools/annotate.html` | offline rater UI: load labels.json, select actions, export |
+| `python -m npc_memory_project.evaluation.report --merge-labels BASE R1 R2 ...` | merge rater exports, pre-fill unanimous agreement, list disagreements |
 | `python -m npc_memory_project.evaluation.report --invariants 200` | scalable property suite only |
 
 ## What automation already covers

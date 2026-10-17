@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.5.0 -- research strengthening: generalisation, consolidation, multi-seed, annotation
+
+No new UI or gameplay. This release adds the experiments and human-eval tooling
+that the honest limitations in docs/EVALUATION.md asked for. It does **not**
+overturn the existing negative results; it extends what can be measured.
+
+### New experiments (`evaluation/`)
+
+* **`families.py` -- multi-role generalisation.** Scenario families across all
+  five roles (shopkeeper, guard, vendor, suspect, villager) with role-valid
+  invariants (admissibility, exoneration→non-punitive, accusation+low-trust→non-
+  warm, disputed→no-effect). Full architecture 109/109 across roles; separates
+  recency-only (100/109). Other baselines still tie — documented, not hidden.
+* **`consolidation_study.py` -- when consolidation is necessary.** Constructs the
+  regime the old suite never had: the weak raw exoneration is crowded out of
+  top-k by recent noise. Decisive-fact coverage goes 0/60 → 60/60 with
+  consolidation. A constructive existence test, reported with its caveats.
+* **`multiseed.py` -- stability.** Re-runs invariant + family suites across
+  independent seeds and counts per-seed win/tie/loss. The architecture beats
+  recency-only on every seed and never loses to any baseline; ties the rest.
+
+### Human-eval pipeline (`tools/`, `evaluation/annotation.py`)
+
+* **`tools/annotate.html`** -- single-file offline rater UI: loads the exported
+  labels.json, shows every memory with tier/status, lets a rater select plausible
+  actions per case with a rationale, exports `labels_<rater>.json`. No method
+  names leak (tested).
+* **`evaluation/annotation.py` + `--merge-labels`** -- merges rater exports,
+  pre-fills `adjudicated_family` only on unanimous single-family agreement,
+  lists disagreements for manual adjudication. Never invents a label.
+
+The protocol is still **PROTOCOL ONLY**: the tooling is built and tested, but no
+human-labelled file exists yet. No number is human ground truth until one is
+committed.
+
+### CLI (`evaluation/report.py`)
+
+    --families [N]     multi-role family suite
+    --consolidation    consolidation-necessity study
+    --multiseed [S]    multi-seed stability
+    --merge-labels BASE R1 R2 ...   merge rater annotation files
+
+### Tests
+
+`tests/test_research_v05.py` -- 14 tests covering the four new modules, including
+assertions of the documented results (so drift is visible) and the blind-by-
+construction property of the annotation tool.
+
 ## v0.4.1 -- the UI is drawn at window resolution
 
 v0.4.0 made the window scalable but scaled *everything* in it, text included. On a

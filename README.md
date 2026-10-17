@@ -22,7 +22,7 @@ pip install -e ".[dev]"
 
 python -m npc_memory_project.demo.shopkeeper_demo        # narrative walkthrough
 python -m npc_memory_project.evaluation.benchmark        # evaluation suite
-pytest                                                    # 73 tests
+pytest                                                    # 110 tests
 ```
 
 ## Playable pixel-art town (pygame)
@@ -229,6 +229,11 @@ seconds; `docs/EVALUATION.md` holds the current numbers with their limitations.
 `python -m npc_memory_project.evaluation.benchmark` reports the four measurements
 below.
 
+v0.5 adds three experiments that extend the instrument without overturning the
+negative results below: a multi-role family suite (`--families`), a
+consolidation-necessity study (`--consolidation`), and multi-seed stability
+(`--multiseed`). See `docs/EVALUATION.md` sections 6–8.
+
 Headline comparison against five retrieval baselines, on a 21-case author-labelled
 set and the 63-check invariant suite:
 
@@ -300,10 +305,12 @@ src/npc_memory_project/
   social/          rumour diffusion with provenance chains
   persistence/     SQLite store (thread-safe)
   simulation/      multi-NPC town orchestration
-  evaluation/      scenario harness, baselines, ablation, scaling, stats, report CLI
+  evaluation/      scenario harness, baselines, ablation, scaling, stats, report CLI,
+                   multi-role families, consolidation study, multi-seed, annotation merge
   web/             HTTP server + canvas simulator and XAI inspector
   game/            playable pygame town (pixel-art, dialogue, shops)
-tests/             106 tests
+tools/             offline human-annotation UI (annotate.html)
+tests/             110 tests
 docs/              architecture notes, evaluation results, human-eval protocol, IEEE paper draft
 ```
 

@@ -1,4 +1,9 @@
-# Evaluation Results — v0.4.0
+# Evaluation Results — v0.5.0
+
+> **v0.5 additions.** Sections 6–8 add multi-role generalisation, a
+> consolidation-necessity study, and multi-seed stability. They extend the
+> instrument; they do **not** overturn the negative results in sections 1–2
+> (status filtering is load-bearing; tiers are not, on the original instruments).
 
 Every number in this file is produced by one command and can be regenerated in
 about three seconds:
@@ -139,7 +144,102 @@ covered by tests in `tests/test_evaluation.py`.
 6. **No LLM baseline.** Every policy here is deterministic and local, so the
    comparison says nothing about an LLM-driven NPC.
 
-## 6. Reproducing
+## 6. Generalisation across roles (v0.5)
+
+Section 1 limitation 3: every case is drawn from the Mira theft vocabulary and
+the shopkeeper role. `evaluation/families.py` generalises the instrument to all
+five roles in `decision/valid_actions.py` (shopkeeper, guard, vendor, suspect,
+villager), each with the invariants that are well-defined for its action menu:
+
+| invariant | meaning | scope |
+|---|---|---|
+| A1 admissibility | chosen action is in the role's valid-action menu | all roles |
+| E1 exoneration | an ACTIVE exoneration suppresses punitive actions | roles with punitive actions |
+| C1 accusation | ACTIVE theft + trust ≤ 0 suppresses warm actions | roles with warm actions |
+| D1 disputed | a DISPUTED belief changes nothing | all roles |
+
+```bash
+python -m npc_memory_project.evaluation.report --families 12
+```
+
+Result (12 scenarios/role, 60 scenarios, 109 checks):
+
+| method | invariants |
+|---|---|
+| **SHM (this architecture)** | **109/109** |
+| recency-only | 100/109 |
+| importance-only | 109/109 |
+| recency+importance (status-blind) | 109/109 |
+| status-aware, no tiers | 109/109 |
+| tiers, status-blind | 109/109 |
+
+Per-role, the full architecture passes 100% on every role. **Honest reading:**
+the suite separates recency-only and nothing else — the same negative result as
+section 1, now shown to hold across roles. Retrieval pressure is set to
+`[6,10,14,18]` ambient records because at `[0,2,4,6,9]` even recency-only ties.
+This is a coverage result, not new evidence that tiers help.
+
+## 7. When is consolidation necessary? (v0.5)
+
+Section 2 finding 3: "the semantic tier contributes nothing measurable." That is
+true *of the retrieval always surfaces the raw evidence* regime. `evaluation/
+consolidation_study.py` constructs the opposite regime and measures it.
+
+Construction: an accusation (day 1) and a **weak** exoneration (day 2) whose
+conflict the updater resolves (accusation superseded, exoneration active). A wall
+of 15–20 recent moderate-importance noise records dominates top-k, so the weak
+raw exoneration is crowded out. The `SemanticConsolidator` detects the resolved
+conflict and emits one high-importance SEMANTIC consensus record carrying the
+`innocence` feature, which survives top-k.
+
+Metric: *decisive-fact coverage* — does the retrieved set contain any record with
+the decisive feature channel?
+
+```bash
+python -m npc_memory_project.evaluation.report --consolidation
+```
+
+| policy | decisive fact retrieved |
+|---|---|
+| no consolidation | 0/60 (0%) |
+| with consolidation | 60/60 (100%) |
+
+**Honest reading:** this is a *constructive existence test*, not a
+generalisation. It shows the one regime where the SEMANTIC tier is load-bearing:
+raw evidence crowded out, consolidated record survives. It does **not** show
+consolidation flips a punitive decision to a warm one — in this construction the
+accusation is superseded (not active), so the baseline is *uninformed*, not
+punitive. Both this section and section 2's negative result must be published
+together: consolidation matters exactly when retrieval pressure would otherwise
+discard the decisive fact, and not otherwise.
+
+## 8. Stability across seeds (v0.5)
+
+Section 1 limitation 4: one seed. `evaluation/multiseed.py` re-runs both the
+invariant and family suites across independent seeds.
+
+```bash
+python -m npc_memory_project.evaluation.report --multiseed 20
+```
+
+Over 5 seeds (see docs for the 20-seed default), per-seed SHM-vs-baseline
+win/tie/loss:
+
+| suite | baseline | W/T/L |
+|---|---|---|
+| invariants | recency-only | 5/0/0 |
+| invariants | importance-only | 1/4/0 |
+| invariants | status-aware, no tiers | 0/5/0 |
+| families | recency-only | 5/0/0 |
+| families | every other baseline | 0/5/0 |
+
+**Honest reading:** the architecture beats recency-only on every seed and never
+*loses* to any baseline on any seed, but ties the rest. This is exactly the
+ranking sections 1 and 6 report, now shown to survive reseeding rather than being
+a lucky draw. A ranking that flipped on some seed would not be a ranking; none
+does. The intervals in section 1 remain the right way to report *magnitude*.
+
+## 9. Reproducing
 
 ```bash
 pip install -e ".[dev]"
@@ -147,7 +247,10 @@ python -m npc_memory_project.evaluation.report            # table in section 1
 python -m npc_memory_project.evaluation.report --ablation # section 2
 python -m npc_memory_project.evaluation.report --scaling  # section 3
 python -m npc_memory_project.evaluation.report --invariants 200
-pytest tests/test_evaluation.py -q
+python -m npc_memory_project.evaluation.report --families 12     # section 6
+python -m npc_memory_project.evaluation.report --consolidation   # section 7
+python -m npc_memory_project.evaluation.report --multiseed 20    # section 8
+pytest tests/test_evaluation.py tests/test_research_v05.py -q
 ```
 
 Numbers above were produced on the development machine on 2026-09-20; latencies
