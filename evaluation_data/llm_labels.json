@@ -1,0 +1,184 @@
+{
+  "evaluator_id": "llm-repo-aware-01",
+  "annotator_type": "llm_repo_aware",
+  "blind": false,
+  "bias_disclosure": "This annotator has read the repository's author labels (evaluation/labelled.py), utility weights (decision/engine.py) and harness invariants. Rule 6 of the blind protocol is therefore violated. Treat these annotations as a separate, DISCLOSED LLM instrument -- never as human ground truth, and never merged with human_labels.json.",
+  "evaluation_date": "2026-10-17",
+  "cases": [
+    {
+      "case_id": "judge-01-fresh-shopkeeper",
+      "acceptable_actions": [
+        "trade",
+        "offer_discount"
+      ],
+      "preferred_action": "trade",
+      "action_family": "warm",
+      "punitive_action_acceptable": false,
+      "decisive_memory_ids": [],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.9,
+      "rationale": "No adverse history and positive trust (10); serving the customer is the expected response, with a discount also defensible."
+    },
+    {
+      "case_id": "judge-02-single-active-accusation",
+      "acceptable_actions": [
+        "refuse_trade",
+        "warn_player",
+        "call_guard"
+      ],
+      "preferred_action": "refuse_trade",
+      "action_family": "punitive",
+      "punitive_action_acceptable": true,
+      "decisive_memory_ids": [
+        "acc-1"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.85,
+      "rationale": "One active, moderately confident accusation from a named vendor plus negative trust (-25) makes withholding service reasonable; nothing in the state supports serving."
+    },
+    {
+      "case_id": "judge-03-exoneration-clears-accusation",
+      "acceptable_actions": [
+        "trade",
+        "offer_discount",
+        "apologise"
+      ],
+      "preferred_action": "trade",
+      "action_family": "warm",
+      "punitive_action_acceptable": false,
+      "decisive_memory_ids": [
+        "exo-1"
+      ],
+      "contradiction_present": true,
+      "contradiction_summary": "acc-1 accuses the player; exo-1 places the theft on Rohan. exo-1 carries greater weight: higher confidence (0.95 vs 0.60), independent guard source, later day, and acc-1 is explicitly superseded.",
+      "confidence": 0.75,
+      "rationale": "The verified guard finding supersedes the accusation, so the player should be treated as cleared; serving is natural, and an apology for the earlier suspicion is also defensible."
+    },
+    {
+      "case_id": "judge-04-single-disputed-rumour",
+      "acceptable_actions": [
+        "trade",
+        "warn_player"
+      ],
+      "preferred_action": "trade",
+      "action_family": "warm",
+      "punitive_action_acceptable": true,
+      "decisive_memory_ids": [
+        "rum-1"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.55,
+      "rationale": "A single disputed, low-confidence rumour from a drunk is not established fact, so serving is reasonable; however a cautious merchant might offer a mild warning, so a punitive action is marginally defensible. Genuinely ambiguous."
+    },
+    {
+      "case_id": "judge-05-rumour-echo-chain",
+      "acceptable_actions": [
+        "trade",
+        "warn_player"
+      ],
+      "preferred_action": "trade",
+      "action_family": "warm",
+      "punitive_action_acceptable": true,
+      "decisive_memory_ids": [
+        "echo-a",
+        "echo-b",
+        "echo-c"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.5,
+      "rationale": "All three records trace to one origin (tomas) and should not be read as three independent witnesses; the evidence is a single weak hearsay chain. Serving is reasonable, and a warning is defensible only as caution, not as corroborated belief."
+    },
+    {
+      "case_id": "judge-06-two-independent-witnesses",
+      "acceptable_actions": [
+        "refuse_trade",
+        "warn_player",
+        "call_guard"
+      ],
+      "preferred_action": "refuse_trade",
+      "action_family": "punitive",
+      "punitive_action_acceptable": true,
+      "decisive_memory_ids": [
+        "w-1",
+        "w-2"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.9,
+      "rationale": "Two independent first-hand witnesses (arun and hal) reporting the same theft, plus negative trust, make refusing service strongly justified."
+    },
+    {
+      "case_id": "judge-07-guard-no-warrant",
+      "acceptable_actions": [
+        "warn_player",
+        "question_player"
+      ],
+      "preferred_action": "warn_player",
+      "action_family": "punitive",
+      "punitive_action_acceptable": true,
+      "decisive_memory_ids": [
+        "g-1"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.8,
+      "rationale": "Strong testimony justifies a warning or questioning, but with no wanted flag, warrant or permit the arrest action is not in the menu, so it cannot be chosen."
+    },
+    {
+      "case_id": "judge-08-guard-with-warrant",
+      "acceptable_actions": [
+        "arrest_player",
+        "warn_player",
+        "question_player"
+      ],
+      "preferred_action": "arrest_player",
+      "action_family": "punitive",
+      "punitive_action_acceptable": true,
+      "decisive_memory_ids": [
+        "g-1"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.85,
+      "rationale": "The same strong testimony, now with a warrant in force (wanted flag and permit), makes arrest admissible and the expected response for an assertive guard; warning remains a milder defensible alternative."
+    },
+    {
+      "case_id": "judge-09-no-stock-friendly",
+      "acceptable_actions": [
+        "apologise"
+      ],
+      "preferred_action": "apologise",
+      "action_family": "warm",
+      "punitive_action_acceptable": false,
+      "decisive_memory_ids": [
+        "help-1"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.6,
+      "rationale": "The player has a positive history (returned a satchel) and no adverse evidence; with zero stock, trade and discount are unavailable, and an apology is the only warm option in the menu. The menu lacks a neutral out-of-stock action, which constrains this case."
+    },
+    {
+      "case_id": "judge-10-betrayal-after-trust",
+      "acceptable_actions": [
+        "refuse_trade",
+        "warn_player",
+        "call_guard"
+      ],
+      "preferred_action": "refuse_trade",
+      "action_family": "punitive",
+      "punitive_action_acceptable": true,
+      "decisive_memory_ids": [
+        "b-1"
+      ],
+      "contradiction_present": false,
+      "contradiction_summary": null,
+      "confidence": 0.85,
+      "rationale": "A recent, first-hand, high-confidence theft (day 8) outweighs older positive trades for current behaviour; withholding service is justified despite the prior trust of 30."
+    }
+  ]
+}

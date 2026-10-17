@@ -36,6 +36,101 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
+#: The kinds of annotator a label file may carry. The human-evaluation protocol
+#: requires that HUMAN and LLM labels are never merged: an LLM set is a separate,
+#: disclosed instrument, not ground truth. See docs/HUMAN_EVAL_PROTOCOL.md.
+ANNOTATOR_TYPES = frozenset({
+    "human", "llm_blind", "llm_repo_aware", "author", "synthetic", "unknown",
+})
+
+
+def dataset_kind(payload: Dict[str, object]) -> str:
+    """Classify a labels payload by the kind of annotator that produced it."""
+    kind = payload.get("annotator_type") or payload.get("label_source")
+    return str(kind) if kind else "unknown"
+
+
+def check_dataset_purity(
+    payloads: Sequence[Tuple[str, Dict[str, object]]],
+) -> Dict[str, object]:
+    """Refuse to mix label files of different annotator kinds.
+
+    This is the guard behind "keep human_labels.json and llm_labels.json
+    separate". Passing a human file and an LLM file to the same dataset raises
+    instead of silently producing a merged file that a reader could mistake for
+    human ground truth.
+    """
+    by_kind: Dict[str, List[str]] = {}
+    for name, payload in payloads:
+        by_kind.setdefault(dataset_kind(payload), []).append(name)
+
+    if len(by_kind) > 1:
+        detail = "; ".join(f"{k}: {', '.join(v)}" for k, v in sorted(by_kind.items()))
+        raise SystemExit(
+            "refusing to mix annotation kinds in one dataset -> " + detail
+            + ". Keep human labels and LLM labels in separate files; see "
+            "docs/HUMAN_EVAL_PROTOCOL.md (datasets are never merged)."
+        )
+    kind = next(iter(by_kind))
+    return {"kind": kind, "files": by_kind[kind]}
+
+
+def validate_annotations(
+    labels: Dict[str, object], cases: Dict[str, object],
+) -> Dict[str, object]:
+    """Check an annotation set against the evaluator validation rules.
+
+    Returns a summary and raises SystemExit on any violation. Checks: every case
+    appears exactly once; every selected action is in that case's menu; the
+    preferred action is among the acceptable ones; confidence in [0, 1]; every
+    decisive memory id exists in the case; contradiction_summary present iff
+    contradiction_present.
+    """
+    case_by_id = {c["case_id"]: c for c in cases.get("cases", [])}
+    seen: set = set()
+    problems: List[str] = []
+
+    for entry in labels.get("cases", []):
+        cid = entry.get("case_id")
+        if cid in seen:
+            problems.append(f"{cid}: duplicate case")
+            continue
+        seen.add(cid)
+        case = case_by_id.get(cid)
+        if case is None:
+            problems.append(f"{cid}: not in the case set")
+            continue
+
+        menu = set(case.get("action_menu", []))
+        acceptable = entry.get("acceptable_actions", [])
+        preferred = entry.get("preferred_action")
+        for action in acceptable:
+            if action not in menu:
+                problems.append(f"{cid}: action '{action}' not in the menu")
+        if preferred not in acceptable:
+            problems.append(f"{cid}: preferred '{preferred}' not in acceptable_actions")
+
+        conf = entry.get("confidence")
+        if not isinstance(conf, (int, float)) or not (0.0 <= float(conf) <= 1.0):
+            problems.append(f"{cid}: confidence {conf!r} outside [0, 1]")
+
+        mem_ids = {m["event_id"] for m in case.get("memories", [])}
+        for mid in entry.get("decisive_memory_ids", []):
+            if mid not in mem_ids:
+                problems.append(f"{cid}: decisive memory '{mid}' not in the case")
+
+        has_summary = bool(entry.get("contradiction_summary"))
+        if bool(entry.get("contradiction_present")) != has_summary:
+            problems.append(f"{cid}: contradiction_present and summary disagree")
+
+    for cid in case_by_id:
+        if cid not in seen:
+            problems.append(f"{cid}: case has no annotation")
+
+    if problems:
+        raise SystemExit("annotation validation failed:\n  " + "\n  ".join(problems))
+    return {"cases": len(seen), "valid": True}
+
 
 def _families_of(rater: Dict[str, object]) -> Tuple[str, ...]:
     fams = rater.get("expected_families")

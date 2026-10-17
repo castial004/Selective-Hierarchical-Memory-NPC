@@ -1,0 +1,563 @@
+{
+  "schema": "shm-npc/judge-cases/1",
+  "description": "Fresh evaluator cases authored for the LLM-judge pilot. NOT the repository's author-labelled set. Ten cases spanning clean state, active/disputed/superseded belief, rumour echo chains, independent corroboration, guard warrant gating, stock gating, and betrayal after trust.",
+  "action_family_taxonomy": {
+    "trade": "warm",
+    "offer_discount": "warm",
+    "apologise": "warm",
+    "help_player": "warm",
+    "refuse_trade": "punitive",
+    "warn_player": "punitive",
+    "call_guard": "punitive",
+    "arrest_player": "punitive",
+    "question_player": "informative",
+    "report_findings": "informative",
+    "talk": "neutral",
+    "ignore": "neutral",
+    "deny": "neutral",
+    "flee": "neutral",
+    "bribe": "neutral",
+    "spread_rumour": "neutral",
+    "confess": "neutral"
+  },
+  "cases": [
+    {
+      "case_id": "judge-01-fresh-shopkeeper",
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 10,
+        "personality": {
+          "fairness": 0.8,
+          "cautious": 0.5
+        },
+        "inventory": {
+          "medicine": 10
+        }
+      },
+      "world": {
+        "game_day": 5,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": []
+    },
+    {
+      "case_id": "judge-02-single-active-accusation",
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": -25,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 8
+        }
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "acc-1",
+          "summary": "Arun said the player stole medicine from the shelf.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.8,
+          "confidence": 0.65,
+          "source": "arun",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "judge-03-exoneration-clears-accusation",
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 0,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.6
+        },
+        "inventory": {
+          "medicine": 5
+        }
+      },
+      "world": {
+        "game_day": 10,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "acc-1",
+          "summary": "Arun said the player stole medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "archive",
+          "status": "superseded",
+          "importance": 0.8,
+          "confidence": 0.6,
+          "source": "arun",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        },
+        {
+          "event_id": "exo-1",
+          "summary": "The guard verified that Rohan, not the player, stole the medicine.",
+          "event_type": "innocence_verified",
+          "game_day": 3,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.9,
+          "confidence": 0.95,
+          "source": "guard",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "rohan_stole"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "judge-04-single-disputed-rumour",
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 0,
+        "personality": {
+          "fairness": 0.7,
+          "cautious": 0.7
+        },
+        "inventory": {
+          "medicine": 6
+        }
+      },
+      "world": {
+        "game_day": 6,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "rum-1",
+          "summary": "A drunk man claimed the player was seen near the medicine shelf.",
+          "event_type": "rumour_theft_accusation",
+          "game_day": 3,
+          "tier": "working",
+          "status": "disputed",
+          "importance": 0.4,
+          "confidence": 0.3,
+          "source": "hearsay_drunkard",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "judge-05-rumour-echo-chain",
+      "action_menu": [
+        "trade",
+        "spread_rumour",
+        "warn_player",
+        "talk",
+        "ignore"
+      ],
+      "npc": {
+        "npc_id": "arun",
+        "role": "vendor",
+        "trust": -5,
+        "personality": {
+          "cautious": 0.5,
+          "fairness": 0.6
+        },
+        "inventory": {
+          "apple": 10
+        }
+      },
+      "world": {
+        "game_day": 8,
+        "location": "market",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "echo-a",
+          "summary": "Tomas told the market that the player stole from the stall.",
+          "event_type": "rumour_theft_accusation",
+          "game_day": 1,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.45,
+          "confidence": 0.5,
+          "source": "tomas",
+          "metadata": {
+            "conflict_key": "stall_theft",
+            "claim": "player_stole",
+            "source_chain": "tomas"
+          }
+        },
+        {
+          "event_id": "echo-b",
+          "summary": "Bera repeated what Tomas said about the player stealing.",
+          "event_type": "rumour_theft_accusation",
+          "game_day": 3,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.4,
+          "confidence": 0.45,
+          "source": "bera",
+          "metadata": {
+            "conflict_key": "stall_theft",
+            "claim": "player_stole",
+            "source_chain": "tomas->bera"
+          }
+        },
+        {
+          "event_id": "echo-c",
+          "summary": "Cedric passed on Bera's story about the player.",
+          "event_type": "rumour_theft_accusation",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.35,
+          "confidence": 0.4,
+          "source": "cedric",
+          "metadata": {
+            "conflict_key": "stall_theft",
+            "claim": "player_stole",
+            "source_chain": "tomas->bera->cedric"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "judge-06-two-independent-witnesses",
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": -15,
+        "personality": {
+          "fairness": 0.8,
+          "cautious": 0.6
+        },
+        "inventory": {
+          "medicine": 7
+        }
+      },
+      "world": {
+        "game_day": 6,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "w-1",
+          "summary": "Arun directly saw the player take a vial without paying.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.8,
+          "confidence": 0.7,
+          "source": "arun",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        },
+        {
+          "event_id": "w-2",
+          "summary": "A second vendor, Hal, independently reported seeing the same theft.",
+          "event_type": "theft_accusation",
+          "game_day": 2,
+          "tier": "episodic",
+          "status": "corroborated",
+          "importance": 0.8,
+          "confidence": 0.75,
+          "source": "hal",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "judge-07-guard-no-warrant",
+      "action_menu": [
+        "warn_player",
+        "question_player",
+        "apologise",
+        "ignore",
+        "report_findings"
+      ],
+      "npc": {
+        "npc_id": "kael",
+        "role": "guard",
+        "trust": -20,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.8,
+          "aggressive": 0.5
+        },
+        "inventory": {
+          "sword": 1
+        }
+      },
+      "world": {
+        "game_day": 5,
+        "location": "town_square",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "g-1",
+          "summary": "Kael holds strong testimony that the player stole medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.9,
+          "confidence": 0.9,
+          "source": "arun",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "judge-08-guard-with-warrant",
+      "action_menu": [
+        "warn_player",
+        "question_player",
+        "arrest_player",
+        "apologise",
+        "ignore",
+        "report_findings"
+      ],
+      "npc": {
+        "npc_id": "kael",
+        "role": "guard",
+        "trust": -20,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.8,
+          "aggressive": 0.5
+        },
+        "inventory": {
+          "sword": 1
+        }
+      },
+      "world": {
+        "game_day": 5,
+        "location": "town_square",
+        "player_has_money": true,
+        "player_wanted": true,
+        "metadata": {
+          "permit_arrest": "true"
+        }
+      },
+      "memories": [
+        {
+          "event_id": "g-1",
+          "summary": "Kael holds strong testimony that the player stole medicine.",
+          "event_type": "theft_accusation",
+          "game_day": 1,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.9,
+          "confidence": 0.9,
+          "source": "arun",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "judge-09-no-stock-friendly",
+      "action_menu": [
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 20,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.5
+        },
+        "inventory": {
+          "medicine": 0
+        }
+      },
+      "world": {
+        "game_day": 4,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "help-1",
+          "summary": "The player returned Mira's lost satchel.",
+          "event_type": "help_player",
+          "game_day": 2,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.5,
+          "confidence": 0.9,
+          "source": "direct",
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "case_id": "judge-10-betrayal-after-trust",
+      "action_menu": [
+        "trade",
+        "offer_discount",
+        "refuse_trade",
+        "warn_player",
+        "apologise",
+        "call_guard"
+      ],
+      "npc": {
+        "npc_id": "mira",
+        "role": "shopkeeper",
+        "trust": 30,
+        "personality": {
+          "fairness": 0.9,
+          "cautious": 0.6
+        },
+        "inventory": {
+          "medicine": 9
+        }
+      },
+      "world": {
+        "game_day": 9,
+        "location": "pharmacy",
+        "player_has_money": true,
+        "player_wanted": false,
+        "metadata": {}
+      },
+      "memories": [
+        {
+          "event_id": "t-1",
+          "summary": "The player traded fairly on day 2.",
+          "event_type": "trade",
+          "game_day": 2,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.3,
+          "confidence": 0.8,
+          "source": "direct",
+          "metadata": {}
+        },
+        {
+          "event_id": "t-2",
+          "summary": "The player traded fairly on day 5.",
+          "event_type": "trade",
+          "game_day": 5,
+          "tier": "working",
+          "status": "active",
+          "importance": 0.3,
+          "confidence": 0.8,
+          "source": "direct",
+          "metadata": {}
+        },
+        {
+          "event_id": "b-1",
+          "summary": "Mira caught the player taking coins from the till.",
+          "event_type": "theft_accusation",
+          "game_day": 8,
+          "tier": "episodic",
+          "status": "active",
+          "importance": 0.9,
+          "confidence": 0.9,
+          "source": "direct",
+          "metadata": {
+            "conflict_key": "theft",
+            "claim": "player_stole"
+          }
+        }
+      ]
+    }
+  ]
+}
