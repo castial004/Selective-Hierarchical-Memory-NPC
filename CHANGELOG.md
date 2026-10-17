@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.6.0 -- research validation: new families, pressure curve, faithfulness
+
+No gameplay or UI change. This release answers "under what conditions does the
+architecture actually help?" with controlled experiments, and keeps every
+negative result visible.
+
+### New experiments (evaluation/)
+
+* **scenario_families.py** -- reciprocity, betrayal, obligation (decision
+  families) and rumour provenance, conflicting witnesses (belief families). The
+  belief families pass; the decision families tie every policy at default
+  retrieval (reported as a negative result).
+* **pressure.py** -- consolidation pressure curve sweeping competing memories
+  (0-500), evidence age, evidence importance, and top-k against five policies.
+  Finding: consolidation's benefit is *conditional on decisive-evidence
+  importance* -- weak evidence is rescued, strong evidence is already safe under
+  importance ranking. The coverage drop is a step, not a curve (top-k=5 effect).
+  Also measures latency, reachable count, footprint, and the small extra context
+  cost consolidation imposes.
+* **faithfulness.py** -- causal-memory precision (50% action-changing, 100% any
+  score delta), coverage (100%), stability (100% conditional on retrieval),
+  derived-memory lineage correctness (PASS). Carries an explicit scope statement:
+  counterfactual sensitivity under a deletion intervention, not formal causality.
+  A spurious stability metric (0% from regenerated IDs) was found and fixed.
+* **rater_agreement.py** -- Cohen/Fleiss kappa, Krippendorff alpha, Jaccard set
+  agreement, and system scoring (accuracy, strict accuracy, harmful-action rate,
+  Wilson CI). Synthetic raters appear only in tests, clearly marked.
+* **multiseed.py** -- per-seed preservation added so anomalous seeds are
+  inspectable; adds the scenario-families suite per seed.
+
+### CLI (evaluation/report.py)
+
+    --newfamilies     reciprocity/betrayal/obligation/provenance/witness
+    --pressure        consolidation pressure curve (with --csv export)
+    --explanations    explanation-faithfulness metrics
+    --figures DIR     raw CSV for figures 1-5 (no hardcoded values)
+
+### Tests
+
+tests/test_research_v06.py -- 17 tests. Total suite 141 passed, 4 skipped.
+
+### Honest notes
+
+* Decision families A-C tie at default retrieval; only the pressure curve
+  separates the policies. Both facts are in docs/EVALUATION.md.
+* No human evaluation has been run. rater_agreement.py scores labels but the
+  labels must come from real raters; the protocol is still PROTOCOL ONLY.
+
 ## v0.5.0 -- research strengthening (part 1): generalisation, consolidation, multi-seed, annotation
 
 No new UI or gameplay. This release adds the experiments and human-eval tooling

@@ -23,6 +23,7 @@ for both methods, so the pairing is valid). Small N is stated, never hidden.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import random
@@ -483,6 +484,149 @@ def multiseed_report(seed_count: int = 20, top_k: int = 5) -> Dict[str, object]:
     return result
 
 
+# ----------------------------------------------------------- new studies v0.6
+def pressure_report(top_k: int = 5) -> Dict[str, object]:
+    from npc_memory_project.evaluation.pressure import (
+        print_pressure_report, run_pressure_curve,
+    )
+    result = run_pressure_curve()
+    for importance in ("weak", "medium", "strong"):
+        print_pressure_report(result, importance=importance, age=50, top_k=top_k)
+    return {
+        "competing_levels": result["competing_levels"],
+        "age_levels": result["age_levels"],
+        "importance_levels": result["importance_levels"],
+        "top_k_levels": result["top_k_levels"],
+        "points": [
+            {
+                "policy": p.policy, "competing": p.competing, "age": p.age,
+                "importance": p.importance, "top_k": p.top_k,
+                "accuracy": p.accuracy, "coverage": p.coverage,
+                "grounded": p.grounded, "latency_ms": p.latency_ms,
+                "reachable": p.reachable, "retrieved_chars": p.retrieved_chars,
+                "stored_chars": p.stored_chars,
+            }
+            for p in result["points"]
+        ],
+    }
+
+
+def explanations_report() -> Dict[str, object]:
+    from npc_memory_project.evaluation.faithfulness import (
+        SCOPE_STATEMENT, evaluate_faithfulness, print_faithfulness,
+    )
+    report = evaluate_faithfulness()
+    print_faithfulness(report)
+    return {
+        "scope": SCOPE_STATEMENT,
+        "precision_action": report.precision_action,
+        "precision_any": report.precision_any,
+        "coverage": report.coverage,
+        "decisive_retrieved_rate": report.decisive_retrieved_rate,
+        "stability_conditional": report.stability_conditional,
+        "stability_unconditional": report.stability_unconditional,
+        "lineage_correct": report.lineage_correct,
+        "detail": report.detail,
+    }
+
+
+def newfamilies_report(top_k: int = 5) -> Dict[str, object]:
+    from npc_memory_project.evaluation.scenario_families import (
+        run_belief_families, run_decision_families,
+    )
+    from npc_memory_project.evaluation.baselines import default_suite
+
+    belief = run_belief_families()
+    methods = [(FULL_NAME, HierarchicalMemoryManager())]
+    methods += [(p.name, p) for p in default_suite()]
+    rows = []
+    for name, retrieval in methods:
+        r = run_decision_families(retrieval=retrieval, top_k=top_k)
+        rows.append({"method": name, "passed": r["passed"], "cases": r["cases"],
+                     "per_family": r["per_family"]})
+
+    print("\nNew scenario families\n")
+    print(f"  belief-level (updater): {belief['passed']}/{belief['cases']}")
+    for d in belief["detail"]:
+        print(f"    [{'PASS' if d['passed'] else 'FAIL'}] {d['invariant']}: {d['detail']}")
+    print()
+    print(f"  {'method':<34}{'decision families':>18}")
+    print("  " + "-" * 52)
+    for row in rows:
+        print(f"  {row['method']:<34}{row['passed']:>9}/{row['cases']:<8}")
+    print()
+    print("  NOTE: decision families A-C tie at default retrieval; they only")
+    print("  discriminate under retrieval pressure. See --pressure. This is a")
+    print("  documented negative result, not a win.")
+    print()
+    return {"belief": belief, "decision": rows}
+
+
+def write_pressure_csv(result: Dict[str, object], path: Path) -> None:
+    import csv
+    pts = result["points"]
+    if not pts:
+        return
+    fields = list(pts[0].keys())
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fields)
+        writer.writeheader()
+        for p in pts:
+            writer.writerow(p)
+
+
+def export_figure_data(directory: Path) -> Dict[str, str]:
+    """Write raw CSV data for every figure. No values are hardcoded."""
+    directory.mkdir(parents=True, exist_ok=True)
+    written: Dict[str, str] = {}
+
+    # Figures 1/2/4: pressure curve -> accuracy, coverage, reachable
+    pressure = pressure_report(top_k=5)
+    f1 = directory / "fig1_accuracy_vs_competing.csv"
+    f2 = directory / "fig2_coverage_vs_competing.csv"
+    f4 = directory / "fig4_reachable_vs_stored.csv"
+    with f1.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh); w.writerow(["policy", "competing", "importance", "age", "top_k", "accuracy"])
+        for p in pressure["points"]:
+            w.writerow([p["policy"], p["competing"], p["importance"], p["age"], p["top_k"], p["accuracy"]])
+    with f2.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh); w.writerow(["policy", "competing", "importance", "age", "top_k", "coverage"])
+        for p in pressure["points"]:
+            w.writerow([p["policy"], p["competing"], p["importance"], p["age"], p["top_k"], p["coverage"]])
+    with f4.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh); w.writerow(["policy", "stored_chars", "reachable", "retrieved_chars"])
+        for p in pressure["points"]:
+            w.writerow([p["policy"], p["stored_chars"], p["reachable"], p["retrieved_chars"]])
+    written["fig1"] = str(f1); written["fig2"] = str(f2); written["fig4"] = str(f4)
+
+    # Figure 3: latency vs history size (scaling)
+    from npc_memory_project.evaluation.scaling import run_scaling_experiment
+    f3 = directory / "fig3_latency_vs_size.csv"
+    rows = run_scaling_experiment(iterations=30)
+    with f3.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh); w.writerow(["npcs", "memories_per_npc", "store_records",
+                                        "decision_median_ms", "decision_p95_ms"])
+        for r in rows:
+            w.writerow([r.npcs, r.memories_per_npc, r.store_records,
+                        r.decision_median_ms, r.decision_p95_ms])
+    written["fig3"] = str(f3)
+
+    # Figure 5: full architecture vs ablations
+    from npc_memory_project.evaluation.ablation import run_ablation_suite
+    f5 = directory / "fig5_ablation.csv"
+    with f5.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh); w.writerow(["variant", "labelled_accuracy", "invariant_rate"])
+        for r in run_ablation_suite():
+            w.writerow([r.name, r.accuracy, r.invariant_rate])
+    written["fig5"] = str(f5)
+
+    print("\nFigure data written (raw CSV, no hardcoded values):")
+    for k, v in written.items():
+        print(f"  {k}: {v}")
+    print()
+    return written
+
+
 # ------------------------------------------------------------------- entry
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
@@ -510,6 +654,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         help="run the invariant+family suites across S seeds and exit")
     parser.add_argument("--merge-labels", nargs="+", type=Path, metavar="PATH",
                         help="merge: BASE labels.json RATER1.json RATER2.json ... -> BASE (adjudicatable)")
+    parser.add_argument("--pressure", action="store_true",
+                        help="consolidation pressure curve (competing memories x policies)")
+    parser.add_argument("--explanations", action="store_true",
+                        help="explanation-faithfulness metrics")
+    parser.add_argument("--newfamilies", action="store_true",
+                        help="reciprocity/betrayal/obligation/provenance/witness families")
+    parser.add_argument("--figures", type=Path, metavar="DIR",
+                        help="export raw figure data (CSV) into DIR for plotting")
+    parser.add_argument("--csv", type=Path, metavar="PATH",
+                        help="write the pressure-curve points as CSV")
 
     parser.add_argument("--export-labels", type=Path, metavar="PATH",
                         help="write the labelled case set for independent annotation")
@@ -579,6 +733,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.json:
             args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
             print(f"wrote {args.json}")
+        return 0
+
+    if args.newfamilies:
+        payload["newfamilies"] = newfamilies_report(top_k=args.top_k)
+        if args.json:
+            args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            print(f"wrote {args.json}")
+        return 0
+
+    if args.explanations:
+        payload["explanations"] = explanations_report()
+        if args.json:
+            args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            print(f"wrote {args.json}")
+        return 0
+
+    if args.pressure:
+        payload["pressure"] = pressure_report(top_k=args.top_k)
+        if args.csv:
+            write_pressure_csv(payload["pressure"], args.csv)
+            print(f"wrote {args.csv}")
+        if args.json:
+            args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            print(f"wrote {args.json}")
+        return 0
+
+    if args.figures is not None:
+        export_figure_data(args.figures)
         return 0
 
     if args.invariants:
