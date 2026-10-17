@@ -89,11 +89,23 @@ def _synthetic_memories(npc_id: str, count: int, current_day: int,
         )
         records.append(manager.event_to_memory(event))
 
-    # run a slice through the real updater so some records are superseded or disputed
+    # Run a slice through the real updater so some records are superseded or
+    # disputed. Deduplicate by event_id afterwards: revise() returns a *replaced*
+    # copy of the incoming record, so the "is it already there" check below missed
+    # it and the store ended up with two records sharing a primary key -- which the
+    # retrieval-index equivalence check then caught. A real store keys on event_id,
+    # so the fixture must too.
     for record in records[: max(1, count // 5)]:
         if record.metadata.get("conflict_key"):
             revised, incoming = updater.revise(records, record)
-            records = revised + [incoming] if incoming not in revised else revised
+            merged = revised + [incoming]
+            seen = set()
+            records = []
+            for candidate in merged:
+                if candidate.event_id in seen:
+                    continue
+                seen.add(candidate.event_id)
+                records.append(candidate)
 
     for record in records:
         if record.tier == MemoryTier.SEMANTIC and rng.random() < 0.5:

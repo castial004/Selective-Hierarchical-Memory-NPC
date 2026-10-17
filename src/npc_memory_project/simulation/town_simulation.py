@@ -21,7 +21,7 @@ v0.2.1 changes
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from npc_memory_project.beliefs.updater import ContradictionAwareBeliefUpdater
 from npc_memory_project.core.models import (
@@ -39,6 +39,7 @@ from npc_memory_project.explainability.counterfactual import (
 )
 from npc_memory_project.explainability.dialogue import FaithfulDialogueSynthesizer
 from npc_memory_project.memory.consolidation import SemanticConsolidator
+from npc_memory_project.memory.index import RetrievalIndex
 from npc_memory_project.memory.manager import HierarchicalMemoryManager
 from npc_memory_project.persistence.sqlite_store import SQLiteMemoryStore
 from npc_memory_project.social.rumours import RumourDiffusion
@@ -55,6 +56,10 @@ class TownSimulation:
         self.db_path = db_path
         self.store = SQLiteMemoryStore(db_path)
         self.manager = HierarchicalMemoryManager()
+        #: Keeps the retrievable subset of each NPC's store up to date, so a
+        #: decision scores the handful of records it can use instead of the whole
+        #: history -- at day 120 of the retention experiment that is 7 of 243.
+        self.index = RetrievalIndex()
         self.updater = ContradictionAwareBeliefUpdater()
         self.consolidator = SemanticConsolidator()
         self.engine = UtilityDecisionEngine()
@@ -117,6 +122,7 @@ class TownSimulation:
     def reset(self) -> None:
         """Return the world to the Day-1 baseline."""
         self.store.clear()
+        self.index = RetrievalIndex()
         self.event_log.clear()
         self.world.game_day = 1
         self.world.location = "town_square"
@@ -173,7 +179,9 @@ class TownSimulation:
         revised, incoming = self.updater.revise(existing, memory)
         for m in revised:
             self.store.upsert(m)
+            self.index.note(m)
         self.store.upsert(incoming)
+        self.index.note(incoming)
         return incoming
 
     def advance_day(self) -> Dict[str, Any]:
@@ -186,8 +194,10 @@ class TownSimulation:
             managed = self.manager.manage_lifecycle(memories, day, npc_id)
             for m in managed:
                 self.store.upsert(m)
+                self.index.note(m)                 # status/tier may have changed
             for m in self.consolidator.consolidate(managed, day, npc_id):
                 self.store.upsert(m)
+                self.index.note(m)
 
         self._apply_scripted_events(day)
         self._log(f"Dawn of Game Day {day}.")
@@ -229,6 +239,14 @@ class TownSimulation:
         self._log("Officer Kael verified Rohan was the thief. Mira revised her beliefs (Day 3).")
 
     # ---------------------------------------------------------- interaction
+    def retrievable_for(self, npc_id: str, memories: Sequence[MemoryRecord]) -> List[MemoryRecord]:
+        """Candidates for a decision: the index's hot set, validated against the store.
+
+        Falls back to (and refreshes from) the full list if the counts disagree, so
+        a write that bypassed the hooks cannot silently hide records.
+        """
+        return self.index.hot_validated(npc_id, memories)
+
     def interact_with_npc(self, npc_id: str) -> Dict[str, Any]:
         """Retrieve -> decide -> verify causality -> speak. Returns the full trace."""
         if npc_id not in self.npcs:
@@ -237,7 +255,8 @@ class TownSimulation:
         npc = self.npcs[npc_id]
         memories = self.store.list_for_npc(npc_id)
         retrieved = self.manager.retrieve(
-            memories, npc_id=npc_id, current_day=self.world.game_day, top_k=5
+            self.retrievable_for(npc_id, memories),
+            npc_id=npc_id, current_day=self.world.game_day, top_k=5,
         )
 
         trace = self.engine.decide(npc, self.world, retrieved)
@@ -423,7 +442,8 @@ class TownSimulation:
             })
 
         retrieved = self.manager.retrieve(
-            all_memories, npc_id=npc_id, current_day=self.world.game_day, top_k=5
+            self.retrievable_for(npc_id, all_memories),
+            npc_id=npc_id, current_day=self.world.game_day, top_k=5,
         )
         trace = self.engine.decide(npc, self.world, retrieved)
         evidence = self.verifier.verify_memories(npc, self.world, retrieved)
@@ -466,8 +486,11 @@ class TownSimulation:
         all_memories = self.store.list_for_npc(npc_id)
         removed = lineage_closure(all_memories, disabled_event_ids) if disabled_event_ids else set()
         active = [m for m in all_memories if m.event_id not in removed]
+        # the counterfactual path removes records by hand, so go through the
+        # validated lookup: the index is re-synced from ``active`` if it has drifted
         retrieved = self.manager.retrieve(
-            active, npc_id=npc_id, current_day=self.world.game_day, top_k=5
+            self.retrievable_for(npc_id, active),
+            npc_id=npc_id, current_day=self.world.game_day, top_k=5,
         )
         trace = self.engine.decide(npc, self.world, retrieved)
 
