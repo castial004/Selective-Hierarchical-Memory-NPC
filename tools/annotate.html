@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NPC Memory — Human Annotation Tool</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1c1f26; --line: #2c313c; --ink: #e6e8ee;
+    --muted: #9aa2b1; --accent: #7aa2f7; --warm: #e0af68; --pun: #f7768e;
+    --neu: #9ece6a; --inf: #7dcfff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  header {
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .grow { flex: 1; }
+  button {
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #0b0d12; border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .wrap { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 58px); }
+  .sidebar { border-right: 1px solid var(--line); overflow: auto; padding: 10px; }
+  .case-item {
+    padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    border: 1px solid transparent; margin-bottom: 4px;
+  }
+  .case-item:hover { background: var(--panel); }
+  .case-item.active { border-color: var(--accent); background: var(--panel); }
+  .case-item .done { color: var(--neu); }
+  .case-item .todo { color: var(--muted); }
+  .main { overflow: auto; padding: 20px 24px; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+       color: var(--muted); margin: 22px 0 8px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; }
+  .chip { display: inline-block; padding: 1px 7px; border-radius: 10px;
+          font-size: 11px; border: 1px solid var(--line); color: var(--muted); }
+  .chip.active { color: var(--neu); border-color: var(--neu); }
+  .chip.disputed { color: var(--warm); border-color: var(--warm); }
+  .chip.superseded { color: var(--muted); text-decoration: line-through; }
+  .chip.corroborated { color: var(--inf); border-color: var(--inf); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .action-btn {
+    padding: 6px 12px; border-radius: 16px; border: 1px solid var(--line);
+    background: var(--panel); cursor: pointer; font-size: 12.5px;
+  }
+  .action-btn.sel { background: var(--accent); color: #0b0d12; border-color: var(--accent); font-weight: 600; }
+  .fam-warm.sel { background: var(--warm); border-color: var(--warm); }
+  .fam-punitive.sel { background: var(--pun); border-color: var(--pun); }
+  .fam-neutral.sel { background: var(--neu); border-color: var(--neu); }
+  .fam-informative.sel { background: var(--inf); border-color: var(--inf); }
+  textarea {
+    width: 100%; min-height: 54px; background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px; font: inherit;
+    resize: vertical;
+  }
+  .rationale-box { margin-top: 6px; }
+  .banner {
+    background: #3a2a12; border: 1px solid var(--warm); color: #ffe3b0;
+    padding: 8px 12px; border-radius: 6px; font-size: 12.5px; margin-bottom: 14px;
+  }
+  .hidden-note { color: var(--muted); font-size: 12px; font-style: italic; }
+  .rater-setup { padding: 20px 24px; }
+  .rater-setup input {
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 10px; font: inherit; width: 280px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>NPC Memory — Human Annotation Tool</h1>
+    <div class="sub">Independent ground-truth labelling · docs/HUMAN_EVAL_PROTOCOL.md</div>
+  </div>
+  <div class="grow"></div>
+  <span id="progress" class="sub"></span>
+  <button id="loadBtn">Load labels.json</button>
+  <input type="file" id="fileInput" accept=".json" hidden>
+  <button id="exportBtn" class="primary" disabled>Export annotated JSON</button>
+</header>
+
+<div id="setup" class="rater-setup">
+  <div class="banner">
+    Raters must NOT be the system author. For each case, select every action a
+    reasonable NPC could plausibly take, and write a one-line rationale. When you
+    are done, export the JSON and hand it to the facilitator for adjudication.
+  </div>
+  <h2>Start</h2>
+  <p class="meta">Enter a rater identifier (your name or initials). This is stored
+     with your labels so adjudication can be traced.</p>
+  <p>
+    Rater ID: <input id="raterId" placeholder="e.g. rater-b" autocomplete="off">
+  </p>
+  <p><button id="startBtn" class="primary" disabled>Load cases →</button></p>
+  <p class="hidden-note">First press "Load labels.json" in the top bar.</p>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STATE = {
+    payload: null,
+    raterId: "",
+    index: 0,
+    cases: [],
+  };
+
+  var FAMILY_OF = {
+    trade: "warm", offer_discount: "warm", apologise: "warm", help_player: "warm",
+    refuse_trade: "punitive", warn_player: "punitive", call_guard: "punitive",
+    arrest_player: "punitive",
+    talk: "neutral", ignore: "neutral", deny: "neutral", flee: "neutral",
+    bribe: "neutral", spread_rumour: "neutral", confess: "neutral",
+    question_player: "informative", report_findings: "informative"
+  };
+
+  var ROLE_ACTIONS = {
+    shopkeeper: ["trade","offer_discount","refuse_trade","warn_player","apologise","call_guard"],
+    guard: ["warn_player","question_player","arrest_player","apologise","ignore","report_findings"],
+    vendor: ["trade","spread_rumour","warn_player","talk","ignore"],
+    suspect: ["talk","confess","deny","flee","bribe"],
+    villager: ["talk","help_player","warn_player","apologise","ignore"]
+  };
+
+  function familyOf(a) { return FAMILY_OF[a] || "neutral"; }
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (k === "class") node.className = attrs[k];
+        else if (k === "text") node.textContent = attrs[k];
+        else if (k.indexOf("on") === 0) node.addEventListener(k.slice(2), attrs[k]);
+        else node.setAttribute(k, attrs[k]);
+      });
+    }
+    (children || []).forEach(function (c) {
+      if (c == null) return;
+      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
+  function findRater(caseObj) {
+    var raters = caseObj.raters || [];
+    for (var i = 0; i < raters.length; i++) {
+      if (raters[i].rater_id === STATE.raterId) return raters[i];
+    }
+    return null;
+  }
+
+  function ensureRater(caseObj) {
+    var r = findRater(caseObj);
+    if (!r) {
+      r = { rater_id: STATE.raterId, expected_actions: [], expected_families: [], rationale: "" };
+      caseObj.raters = caseObj.raters || [];
+      caseObj.raters.push(r);
+    }
+    return r;
+  }
+
+  function isDone(caseObj) { return !!findRater(caseObj); }
+
+  function renderSidebar() {
+    var box = document.getElementById("sidebar");
+    box.innerHTML = "";
+    STATE.cases.forEach(function (c, i) {
+      var done = isDone(c);
+      var item = el("div", {
+        class: "case-item" + (i === STATE.index ? " active" : ""),
+        onclick: function () { STATE.index = i; render(); }
+      }, [
+        el("div", { text: c.case_id }),
+        el("span", { class: done ? "done" : "todo",
+                     text: done ? "✓ annotated" : "• pending" })
+      ]);
+      box.appendChild(item);
+    });
+  }
+
+  function renderMain() {
+    var main = document.getElementById("main");
+    main.innerHTML = "";
+    var c = STATE.cases[STATE.index];
+    if (!c) return;
+
+    var rater = findRater(c);
+    var selected = rater ? rater.expected_actions.slice() : [];
+
+    main.appendChild(el("h2", { text: c.case_id }));
+    main.appendChild(el("div", { class: "meta",
+      text: "role: " + c.npc.role + " · trust: " + c.npc.trust +
+            " · day: " + c.world.game_day + " · location: " + c.world.location }));
+
+    main.appendChild(el("div", { class: "banner",
+      text: "Judge ONLY the state shown. A DISPUTED belief is contested; a " +
+            "SUPERSEDED belief is history, not knowledge. Select every plausible action." }));
+
+    // memories
+    main.appendChild(el("h3", { text: "Memory state (" + c.memories.length + " records)" }));
+    var table = el("table", null, [
+      el("thead", null, [el("tr", null, [
+        el("th", { text: "day" }), el("th", { text: "tier" }),
+        el("th", { text: "status" }), el("th", { text: "summary" }),
+        el("th", { text: "imp" }), el("th", { text: "conf" })
+      ])])
+    ]);
+    var tbody = el("tbody");
+    c.memories.forEach(function (m) {
+      var st = (m.status || "active").toLowerCase();
+      tbody.appendChild(el("tr", null, [
+        el("td", { text: String(m.game_day) }),
+        el("td", { text: m.tier }),
+        el("td", null, [el("span", { class: "chip " + st, text: m.status })]),
+        el("td", { text: m.summary }),
+        el("td", { text: (m.importance != null ? m.importance.toFixed ? m.importance.toFixed(2) : m.importance : "") }),
+        el("td", { text: (m.confidence != null ? m.confidence.toFixed ? m.confidence.toFixed(2) : m.confidence : "") })
+      ]));
+    });
+    table.appendChild(tbody);
+    main.appendChild(table);
+
+    // actions
+    var role = c.npc.role;
+    var menu = ROLE_ACTIONS[role] || ["talk", "ignore"];
+    main.appendChild(el("h3", { text: "Which actions could a reasonable NPC take here?" }));
+    var actionsBox = el("div", { class: "actions" });
+    menu.forEach(function (a) {
+      var fam = familyOf(a);
+      var sel = selected.indexOf(a) !== -1;
+      actionsBox.appendChild(el("button", {
+        class: "action-btn fam-" + fam + (sel ? " sel" : ""),
+        text: a + "  (" + fam + ")",
+        onclick: function () {
+          var r = ensureRater(c);
+          var idx = r.expected_actions.indexOf(a);
+          if (idx === -1) r.expected_actions.push(a);
+          else r.expected_actions.splice(idx, 1);
+          r.expected_families = r.expected_actions.map(familyOf);
+          render();
+        }
+      }));
+    });
+    main.appendChild(actionsBox);
+
+    // rationale
+    main.appendChild(el("h3", { text: "Rationale (one line)" }));
+    var ta = el("textarea", { placeholder: "Why could this NPC take these actions?" });
+    ta.value = rater ? (rater.rationale || "") : "";
+    ta.addEventListener("input", function () {
+      ensureRater(c).rationale = ta.value;
+    });
+    main.appendChild(ta);
+
+    // nav
+    main.appendChild(el("div", { class: "actions", style: "margin-top:20px" }, [
+      el("button", { text: "← Previous", disabled: STATE.index === 0 ? "1" : null,
+        onclick: function () { STATE.index = Math.max(0, STATE.index - 1); render(); } }),
+      el("button", { text: "Next →",
+        disabled: STATE.index >= STATE.cases.length - 1 ? "1" : null,
+        onclick: function () { STATE.index = Math.min(STATE.cases.length - 1, STATE.index + 1); render(); } })
+    ]));
+  }
+
+  function updateProgress() {
+    var done = STATE.cases.filter(isDone).length;
+    document.getElementById("progress").textContent =
+      "rater: " + STATE.raterId + " · " + done + " / " + STATE.cases.length + " annotated";
+    document.getElementById("exportBtn").disabled = done === 0;
+  }
+
+  function render() {
+    renderSidebar();
+    renderMain();
+    updateProgress();
+  }
+
+  function enableStart() {
+    var id = (document.getElementById("raterId").value || "").trim();
+    document.getElementById("startBtn").disabled = !(STATE.payload && id);
+  }
+
+  document.getElementById("loadBtn").addEventListener("click", function () {
+    document.getElementById("fileInput").click();
+  });
+
+  document.getElementById("fileInput").addEventListener("change", function (ev) {
+    var f = ev.target.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        STATE.payload = JSON.parse(reader.result);
+        STATE.cases = STATE.payload.cases || [];
+        if (!STATE.cases.length) throw new Error("no cases in file");
+        enableStart();
+        alert("Loaded " + STATE.cases.length + " cases. Enter a rater ID and press Load cases.");
+      } catch (e) {
+        alert("Could not read file: " + e.message);
+      }
+    };
+    reader.readAsText(f);
+  });
+
+  document.getElementById("raterId").addEventListener("input", enableStart);
+
+  document.getElementById("startBtn").addEventListener("click", function () {
+    STATE.raterId = (document.getElementById("raterId").value || "").trim();
+    document.getElementById("setup").style.display = "none";
+    document.getElementById("app").style.display = "grid";
+    render();
+  });
+
+  document.getElementById("exportBtn").addEventListener("click", function () {
+    var payload = JSON.parse(JSON.stringify(STATE.payload));
+    payload.annotation_meta = {
+      rater_id: STATE.raterId,
+      exported_at: new Date().toISOString(),
+      tool: "annotate.html",
+      schema: "shm-npc/labelled-cases/1"
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var safe = STATE.raterId.replace(/[^a-z0-9_-]/gi, "_");
+    a.href = url;
+    a.download = "labels_" + safe + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>

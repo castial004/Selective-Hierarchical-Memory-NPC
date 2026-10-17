@@ -4,9 +4,10 @@ A runnable research prototype for NPCs that remember selectively, revise beliefs
 when testimony contradicts itself, choose actions under game-state validity
 constraints, and *prove* which memories caused the choice.
 
-Version **0.3.0** — adds the playable pygame town on top of the audited core.
-See [CHANGELOG-AUDIT.md](CHANGELOG-AUDIT.md) for the v0.2.1 audit fixes and
-[CHANGELOG.md](CHANGELOG.md) for the game release.
+Version **0.5.0** — adds long-horizon retention, a retrieval index, multi-role
+generalisation, a consolidation-necessity study, multi-seed stability, and an
+offline human-annotation tool. See [CHANGELOG-AUDIT.md](CHANGELOG-AUDIT.md) for the
+v0.2.1 audit fixes and [CHANGELOG.md](CHANGELOG.md) for release history.
 
 The decision core is **dependency-free** (Python standard library only) and runs
 **without an LLM**. An LLM can be attached, optionally, for dialogue polish only —
@@ -22,7 +23,7 @@ pip install -e ".[dev]"
 
 python -m npc_memory_project.demo.shopkeeper_demo        # narrative walkthrough
 python -m npc_memory_project.evaluation.benchmark        # evaluation suite
-pytest                                                    # 73 tests
+pytest                                                    # 126 tests
 ```
 
 ## Playable pixel-art town (pygame)
@@ -229,6 +230,11 @@ seconds; `docs/EVALUATION.md` holds the current numbers with their limitations.
 `python -m npc_memory_project.evaluation.benchmark` reports the four measurements
 below.
 
+v0.5 adds three experiments that extend the instrument without overturning the
+negative results below: a multi-role family suite (`--families`), a
+consolidation-necessity study (`--consolidation`), and multi-seed stability
+(`--multiseed`). See `docs/EVALUATION.md` sections 6–8.
+
 Headline comparison against five retrieval baselines, on a 21-case author-labelled
 set and the 63-check invariant suite:
 
@@ -343,11 +349,13 @@ src/npc_memory_project/
   social/          rumour diffusion with provenance chains
   persistence/     SQLite store (thread-safe)
   simulation/      multi-NPC town orchestration
-  evaluation/      harness, baselines, ablation, scaling, retention,
-                   indexing, stats, report CLI
+  evaluation/      harness, baselines, ablation, scaling, retention, indexing,
+                   stats, report CLI, multi-role families, consolidation study,
+                   multi-seed, annotation merge
   web/             HTTP server + canvas simulator and XAI inspector
   game/            playable pygame town (pixel-art, dialogue, shops)
-tests/             134 tests
+tools/             offline human-annotation UI (annotate.html)
+tests/             126 tests
 docs/              architecture notes, evaluation results, human-eval protocol, IEEE paper draft
 ```
 

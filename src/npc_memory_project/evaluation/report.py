@@ -418,6 +418,71 @@ def invariants_only(count: int, top_k: int = 5) -> Dict[str, object]:
     return {"scenarios": count, "full": full, "baselines": rows}
 
 
+# ------------------------------------------------------------- new studies
+def families_table(n_per_role: int = 12, top_k: int = 5) -> Dict[str, object]:
+    """Multi-role family suite: full architecture plus every baseline."""
+    from npc_memory_project.evaluation.families import (
+        build_family_scenarios, evaluate_families,
+    )
+
+    scenarios = build_family_scenarios(n_per_role, seed=20260920)
+    methods: List[tuple] = [(FULL_NAME, HierarchicalMemoryManager())]
+    methods += [(policy.name, policy) for policy in default_suite()]
+
+    rows = []
+    for name, retrieval in methods:
+        result = evaluate_families(scenarios, retrieval=retrieval, top_k=top_k)
+        rows.append({
+            "method": name,
+            "passed": result["passed"],
+            "checked": result["checks"],
+            "rate": result["pass_rate"],
+            "per_role": result["per_role"],
+        })
+    full = rows[0]
+    return {
+        "scenarios": len(scenarios),
+        "roles": sorted({s.role for s in scenarios}),
+        "full": {"passed": full["passed"], "checked": full["checked"],
+                 "per_role": full["per_role"]},
+        "rows": rows,
+    }
+
+
+def print_families_table(report: Dict[str, object]) -> None:
+    print("\nMulti-role family suite -- generalisation beyond the shopkeeper role\n")
+    print(f"  {report['scenarios']} scenarios across roles: {', '.join(report['roles'])}\n")
+    print(f"  {'method':<34}{'invariants':>13}")
+    print("  " + "-" * 47)
+    for row in report["rows"]:  # type: ignore[index]
+        print(f"  {row['method']:<34}{row['passed']:>7}/{row['checked']:<5}")
+    print()
+    print("  Per-role pass rate for the full architecture:")
+    for role, detail in report["full"]["per_role"].items():  # type: ignore[index]
+        print(f"    {role:<14}{detail['passed']}/{detail['checks']} "
+              f"({100 * detail['rate']:.0f}%)")
+    print()
+
+
+def consolidation_report(top_k: int = 5, n: int = 60) -> Dict[str, object]:
+    from npc_memory_project.evaluation.consolidation_study import (
+        print_consolidation_study, run_consolidation_study,
+    )
+    result = run_consolidation_study(n=n, top_k=top_k)
+    print_consolidation_study(result)
+    return result
+
+
+def multiseed_report(seed_count: int = 20, top_k: int = 5) -> Dict[str, object]:
+    from npc_memory_project.evaluation.multiseed import (
+        DEFAULT_SEEDS, print_multiseed, run_multiseed,
+    )
+    seeds = list(DEFAULT_SEEDS)[:max(1, seed_count)]
+    result = run_multiseed(seeds=seeds, top_k=top_k)
+    print_multiseed(result)
+    return result
+
+
 # ------------------------------------------------------------------- entry
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(
@@ -437,6 +502,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--scaling-iterations", type=int, default=60)
     parser.add_argument("--invariants", type=int, metavar="N",
                         help="run the invariant suite over N scenarios and exit")
+    parser.add_argument("--families", type=int, metavar="N", nargs="?", const=12,
+                        help="run the multi-role family suite (N per role, default 12) and exit")
+    parser.add_argument("--consolidation", action="store_true",
+                        help="run the consolidation-necessity study and exit")
+    parser.add_argument("--multiseed", type=int, metavar="S", nargs="?", const=20,
+                        help="run the invariant+family suites across S seeds and exit")
+    parser.add_argument("--merge-labels", nargs="+", type=Path, metavar="PATH",
+                        help="merge: BASE labels.json RATER1.json RATER2.json ... -> BASE (adjudicatable)")
+
     parser.add_argument("--export-labels", type=Path, metavar="PATH",
                         help="write the labelled case set for independent annotation")
     parser.add_argument("--blind-retrieval", action="store_true",
@@ -471,6 +545,41 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         result = score_against_labels(args.labels, top_k=args.top_k)
         print_label_score(result)
         payload["human_labels"] = result
+
+    if args.merge_labels:
+        from npc_memory_project.evaluation.annotation import (
+            merge_rater_files, print_merge_summary, write_merged,
+        )
+        if len(args.merge_labels) < 2:
+            raise SystemExit("--merge-labels needs BASE and at least one RATER file")
+        base, raters = args.merge_labels[0], args.merge_labels[1:]
+        result = merge_rater_files(base, raters)
+        write_merged(result, base)
+        print_merge_summary(result, base)
+        return 0
+
+    if args.families is not None:
+        result = families_table(args.families, top_k=args.top_k)
+        print_families_table(result)
+        payload["families"] = result
+        if args.json:
+            args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            print(f"wrote {args.json}")
+        return 0
+
+    if args.consolidation:
+        payload["consolidation"] = consolidation_report(top_k=args.top_k)
+        if args.json:
+            args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            print(f"wrote {args.json}")
+        return 0
+
+    if args.multiseed is not None:
+        payload["multiseed"] = multiseed_report(args.multiseed, top_k=args.top_k)
+        if args.json:
+            args.json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            print(f"wrote {args.json}")
+        return 0
 
     if args.invariants:
         result = invariants_only(args.invariants, top_k=args.top_k)
